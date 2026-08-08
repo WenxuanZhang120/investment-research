@@ -1,5 +1,5 @@
 {
-  "mapping_version": "3.1.0",
+  "mapping_version": "3.2.0",
   "fields": [
     {
       "canonical_field_name": "security_code",
@@ -133,6 +133,14 @@
       "raw_base_fields": ["利润总额"]
     },
     {
+      "canonical_field_name": "income_tax_expense",
+      "category": "financial",
+      "statement_type": "income_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["所得税费用"]
+    },
+    {
       "canonical_field_name": "total_assets",
       "category": "financial",
       "statement_type": "balance_sheet",
@@ -189,6 +197,38 @@
       "raw_base_fields": ["存货"]
     },
     {
+      "canonical_field_name": "short_term_borrowings",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["短期借款"]
+    },
+    {
+      "canonical_field_name": "non_current_liabilities_due_within_one_year",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["一年内到期的非流动负债"]
+    },
+    {
+      "canonical_field_name": "long_term_borrowings",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["长期借款"]
+    },
+    {
+      "canonical_field_name": "bonds_payable",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["应付债券"]
+    },
+    {
       "canonical_field_name": "net_cash_flow_operating",
       "category": "financial",
       "statement_type": "cash_flow_statement",
@@ -219,6 +259,14 @@
       "value_nature": "duration_ytd",
       "unit": "CNY",
       "raw_base_fields": ["现金及现金等价物净增加额"]
+    },
+    {
+      "canonical_field_name": "capital_expenditure_cash",
+      "category": "financial",
+      "statement_type": "cash_flow_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["购建固定资产、无形资产和其他长期资产支付的现金"]
     }
   ]
 }

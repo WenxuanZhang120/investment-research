@@ -39,3 +39,15 @@ python3 scripts/screen_market_research_queue.py \
 ```
 
 `Reject` 仅表示不满足当前规则的输入资格，不是对证券的投资结论。当前版本尚未行业中性化，完整限制见批次验证报告和 `research_queue/README.md`。
+
+## 高级财务指标
+
+`derive_advanced_financial_metrics.py` 接收一个或多个完整财务批次，按证券和上年同一报告期计算收入增长、归母净利润增长、平均归母权益 ROE、平均投入资本 ROIC 和自由现金流。
+
+```bash
+python3 scripts/derive_advanced_financial_metrics.py \
+  <prior-financial-manifest.json> \
+  <current-financial-manifest.json>
+```
+
+缺少上年可比期、当前字段、历史字段或有效分母时，记录保留 `null` 和精确状态。当前仓库数据尚未覆盖全部高级输入，因此没有为全市场发布伪造的高级指标批次。
