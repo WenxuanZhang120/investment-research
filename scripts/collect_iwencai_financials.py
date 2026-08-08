@@ -22,7 +22,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT))
 from scripts.save_raw_response import DEFAULT_RAW_ROOT, save_raw_response  # noqa: E402
 
 
-COLLECTOR_VERSION = "1.1.0"
+COLLECTOR_VERSION = "1.2.0"
 API_URL = "https://openapi.iwencai.com/v1/query2data"
 SKILL_ID = "hithink-finance-query"
 SKILL_VERSION = "1.0.0"
@@ -34,6 +34,10 @@ MAX_RETRIES = 2
 
 class CollectionError(RuntimeError):
     """Raised when a complete, auditable query cannot be collected."""
+
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 def _api_key() -> str:
@@ -84,10 +88,13 @@ def _request_page(
     except urllib.error.HTTPError as error:
         body = error.read().decode("utf-8") if error.fp else ""
         raise CollectionError(
-            f"iWencai HTTP {error.code}: {body or error.reason}"
+            f"iWencai HTTP {error.code}: {body or error.reason}",
+            retryable=error.code == 429 or error.code >= 500,
         ) from error
     except urllib.error.URLError as error:
-        raise CollectionError(f"iWencai network error: {error.reason}") from error
+        raise CollectionError(
+            f"iWencai network error: {error.reason}", retryable=True
+        ) from error
 
     try:
         parsed = json.loads(response_body)
@@ -114,8 +121,10 @@ def _request_with_retry(
             )
         except CollectionError as error:
             last_error = error
-            if attempt < MAX_RETRIES:
+            if attempt < MAX_RETRIES and error.retryable:
                 time.sleep(attempt + 1)
+            else:
+                raise
     raise CollectionError(f"iWencai request failed after retries: {last_error}")
 
 

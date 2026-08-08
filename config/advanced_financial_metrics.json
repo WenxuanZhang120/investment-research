@@ -1,0 +1,36 @@
+{
+  "metric_definition_version": "1.0.0",
+  "metrics": [
+    {
+      "metric_name": "revenue_growth_yoy",
+      "formula": "revenue_current / revenue_prior_comparable - 1",
+      "unit": "ratio",
+      "requires_prior_comparable_period": true
+    },
+    {
+      "metric_name": "net_income_growth_yoy",
+      "formula": "net_income_parent_current / net_income_parent_prior_comparable - 1",
+      "unit": "ratio",
+      "requires_prior_comparable_period": true
+    },
+    {
+      "metric_name": "roe_parent_average",
+      "formula": "net_income_parent_current / average(equity_parent_current, equity_parent_prior_comparable)",
+      "unit": "ratio",
+      "requires_prior_comparable_period": true
+    },
+    {
+      "metric_name": "roic_average",
+      "formula": "operating_profit_current * (1 - income_tax_expense_current / total_profit_current) / average(invested_capital_current, invested_capital_prior_comparable)",
+      "unit": "ratio",
+      "invested_capital_formula": "total_equity + short_term_borrowings + non_current_liabilities_due_within_one_year + long_term_borrowings + bonds_payable - monetary_funds",
+      "requires_prior_comparable_period": true
+    },
+    {
+      "metric_name": "free_cash_flow",
+      "formula": "net_cash_flow_operating_current - capital_expenditure_cash_current",
+      "unit": "CNY",
+      "requires_prior_comparable_period": false
+    }
+  ]
+}

@@ -12,6 +12,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.collect_iwencai_financials import (  # noqa: E402
     CollectionError,
+    _request_with_retry,
     collect_query,
 )
 
@@ -122,6 +123,17 @@ class CollectIwencaiFinancialsTests(unittest.TestCase):
                     raw_root=self.raw_root,
                     request_page=lambda **kwargs: self.response(1),
                 )
+
+    def test_does_not_retry_non_retryable_auth_or_quota_error(self) -> None:
+        calls = []
+
+        def fail(**kwargs):
+            calls.append(kwargs)
+            raise CollectionError("HTTP 401 quota", retryable=False)
+
+        with self.assertRaisesRegex(CollectionError, "HTTP 401 quota"):
+            _request_with_retry(fail, query="q")
+        self.assertEqual(len(calls), 1)
 
 
 if __name__ == "__main__":

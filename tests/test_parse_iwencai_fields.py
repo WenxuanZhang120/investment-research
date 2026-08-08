@@ -133,6 +133,21 @@ class ParseIwencaiFieldsTests(unittest.TestCase):
             parent["canonical_field_name"],
         )
 
+    def test_maps_advanced_metric_input_fields(self) -> None:
+        expected = {
+            "所得税费用[20251231]": "income_tax_expense",
+            "短期借款[20251231]": "short_term_borrowings",
+            "一年内到期的非流动负债[20251231]": "non_current_liabilities_due_within_one_year",
+            "长期借款[20251231]": "long_term_borrowings",
+            "应付债券[20251231]": "bonds_payable",
+            "购建固定资产、无形资产和其他长期资产支付的现金[20251231]": "capital_expenditure_cash",
+        }
+        for raw_field, canonical in expected.items():
+            with self.subTest(raw_field=raw_field):
+                parsed = self.parse(raw_field)
+                self.assertEqual(parsed["canonical_field_name"], canonical)
+                self.assertEqual(parsed["period_end"], "2025-12-31")
+
     def test_preserves_unknown_field_without_guessing_mapping(self) -> None:
         result = self.parse("未知指标[20260807]")
 
