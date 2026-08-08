@@ -1,5 +1,5 @@
 {
-  "taxonomy_version": "1.1.0",
+  "taxonomy_version": "1.2.0",
   "default_event_type": "other_announcement",
   "rules": [
     {"event_type": "periodic_report", "keywords": ["年度报告", "半年度报告", "季度报告"]},
@@ -9,6 +9,7 @@
     {"event_type": "shareholder_change", "keywords": ["增持", "减持"]},
     {"event_type": "restructuring", "keywords": ["重大资产重组", "发行股份购买资产"]},
     {"event_type": "regulatory", "keywords": ["监管函", "问询函", "行政处罚"]},
+    {"event_type": "management_change", "keywords": ["董事长辞职", "总经理辞职", "高级管理人员变动", "聘任总经理", "管理层变动"]},
     {"event_type": "pledge", "keywords": ["股权质押", "股份质押"]},
     {"event_type": "unlock", "keywords": ["限售股解禁", "限售股份上市流通"]}
   ]

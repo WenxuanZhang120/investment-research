@@ -12,6 +12,9 @@ sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.normalize_iwencai_announcements import (  # noqa: E402
     AnnouncementNormalizationError,
+    DEFAULT_TAXONOMY,
+    _classify,
+    _taxonomy,
     build_events,
     write_bundle,
 )
@@ -84,6 +87,14 @@ class NormalizeIwencaiAnnouncementsTests(unittest.TestCase):
         path.write_text(json.dumps(document), encoding="utf-8")
         with self.assertRaisesRegex(AnnouncementNormalizationError, "checksum"):
             build_events(path)
+
+    def test_management_change_taxonomy_is_explicit(self):
+        event_type, keywords = _classify(
+            "某公司关于总经理辞职的公告",
+            _taxonomy(DEFAULT_TAXONOMY),
+        )
+        self.assertEqual(event_type, "management_change")
+        self.assertEqual(keywords, ["总经理辞职"])
 
 
 if __name__ == "__main__":

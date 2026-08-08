@@ -25,3 +25,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python3 scripts/validate_repository.py
+      - name: Audit end-to-end completion evidence
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/audit_system_completion.py
