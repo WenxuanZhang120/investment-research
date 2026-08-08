@@ -97,6 +97,23 @@ class AuditIwencaiResponseTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             write_report({"status": "changed"}, output_path)
 
+    def test_audits_pagination_response_shape(self) -> None:
+        document = json.loads(self.snapshot_path.read_text(encoding="utf-8"))
+        component = document["payload"]["data"]["answer"][0]["txt"][0][
+            "content"
+        ]["components"][0]
+        document["payload"] = {"answer": {"components": [component]}}
+        self.snapshot_path.write_text(
+            json.dumps(document, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        report = audit_snapshot(self.snapshot_path)
+
+        self.assertEqual(report["summary"]["table_component_count"], 1)
+        self.assertEqual(report["summary"]["column_count"], 3)
+        self.assertEqual(report["summary"]["reported_total_count"], 100)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,5 @@
 {
-  "mapping_version": "1.1.0",
+  "mapping_version": "2.0.0",
   "fields": [
     {
       "canonical_field_name": "security_code",
@@ -12,6 +12,42 @@
       "raw_base_fields": ["股票简称"]
     },
     {
+      "canonical_field_name": "market_memberships",
+      "category": "identity",
+      "raw_base_fields": ["股票市场类型"]
+    },
+    {
+      "canonical_field_name": "listing_date",
+      "category": "identity",
+      "raw_base_fields": ["新股上市日期"]
+    },
+    {
+      "canonical_field_name": "listing_status",
+      "category": "identity",
+      "raw_base_fields": ["上市状态"]
+    },
+    {
+      "canonical_field_name": "open",
+      "category": "market",
+      "unit": "CNY",
+      "adjustment_type": "unadjusted",
+      "raw_base_fields": ["开盘价:不复权"]
+    },
+    {
+      "canonical_field_name": "high",
+      "category": "market",
+      "unit": "CNY",
+      "adjustment_type": "unadjusted",
+      "raw_base_fields": ["最高价:不复权"]
+    },
+    {
+      "canonical_field_name": "low",
+      "category": "market",
+      "unit": "CNY",
+      "adjustment_type": "unadjusted",
+      "raw_base_fields": ["最低价:不复权"]
+    },
+    {
       "canonical_field_name": "close",
       "category": "market",
       "raw_base_fields": ["收盘价"]
@@ -22,6 +58,18 @@
       "unit": "CNY",
       "adjustment_type": "unadjusted",
       "raw_base_fields": ["收盘价:不复权"]
+    },
+    {
+      "canonical_field_name": "volume",
+      "category": "market",
+      "unit": "shares",
+      "raw_base_fields": ["成交量"]
+    },
+    {
+      "canonical_field_name": "turnover",
+      "category": "market",
+      "unit": "CNY",
+      "raw_base_fields": ["成交额"]
     },
     {
       "canonical_field_name": "market_cap",
@@ -38,11 +86,6 @@
       "canonical_field_name": "net_income_parent",
       "category": "financial",
       "raw_base_fields": ["归母净利润"]
-    },
-    {
-      "canonical_field_name": "market_type",
-      "category": "identity",
-      "raw_base_fields": ["股票市场类型"]
     }
   ]
 }

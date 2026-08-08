@@ -1,0 +1,624 @@
+{
+  "bundle_schema_version": 2,
+  "normalizer_version": "2.0.0",
+  "mapping_version": "2.0.0",
+  "bundle_id": "39fd6c21403eedd2e816",
+  "source": "iwencai",
+  "query": "2026年8月7日全部A股的股票代码、股票简称、股票市场类型、上市日期、上市状态、开盘价（不复权）、最高价（不复权）、最低价（不复权）、收盘价（不复权）、成交量、成交额、总市值、市盈率(pe,ttm)，按股票代码升序排列",
+  "fetched_at_start": "2026-08-08T18:01:56.326000+08:00",
+  "fetched_at_end": "2026-08-08T18:04:31.770000+08:00",
+  "raw_records": [
+    {
+      "record_id": "7623f4ff6cf6b75ad81b",
+      "payload_sha256": "e740f93694099f82dccf21d9b882255be48e26d636f90a67908c35d408b47770",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180156326000+0800_7623f4ff6cf6b75ad81b.json",
+      "fetched_at": "2026-08-08T18:01:56.326000+08:00",
+      "page": 1,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "88a7bbb7e59bf6e6a7f5",
+      "payload_sha256": "e6334a22d69187589c91776d14f7a62b2bdfbf805d7cc7a6648a308bd0723fbe",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180203479000+0800_88a7bbb7e59bf6e6a7f5.json",
+      "fetched_at": "2026-08-08T18:02:03.479000+08:00",
+      "page": 2,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "46abc1f2d3593ec2cae7",
+      "payload_sha256": "fc102fec7bdc125a30a62cff140a34d6c4c666a1f897a0a3a8eae69c196da8d1",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180205387000+0800_46abc1f2d3593ec2cae7.json",
+      "fetched_at": "2026-08-08T18:02:05.387000+08:00",
+      "page": 3,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "44dec30f478e06b79dcb",
+      "payload_sha256": "64172bd721e0b6c0887fdc78a37b93df32dc00c0bdf0933164ba5b1122d8e729",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180207477000+0800_44dec30f478e06b79dcb.json",
+      "fetched_at": "2026-08-08T18:02:07.477000+08:00",
+      "page": 4,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "37dbac60ed1d22fab28d",
+      "payload_sha256": "006f6507911931069efdbe4056d2fccd87ad92d10610814338452c178a0651a1",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180209445000+0800_37dbac60ed1d22fab28d.json",
+      "fetched_at": "2026-08-08T18:02:09.445000+08:00",
+      "page": 5,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "07d00d0fcc3be8a1b140",
+      "payload_sha256": "57759559d671c9d75e72a28e81844a5b57b044bcb1826cf776347da236506f5a",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180212843000+0800_07d00d0fcc3be8a1b140.json",
+      "fetched_at": "2026-08-08T18:02:12.843000+08:00",
+      "page": 6,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "6783a1db83d16edeb5d8",
+      "payload_sha256": "15e8e27f4b73ab5bfc25d02c7eece3e9f714e182a19d6bef84a5aac7c29b8f6e",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180214999000+0800_6783a1db83d16edeb5d8.json",
+      "fetched_at": "2026-08-08T18:02:14.999000+08:00",
+      "page": 7,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "4ee071158f9a170c53b8",
+      "payload_sha256": "27fd44023f1a7eb8c2301b0186215ea2cdbfccad4f8db419cf5996bba716312e",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180217418000+0800_4ee071158f9a170c53b8.json",
+      "fetched_at": "2026-08-08T18:02:17.418000+08:00",
+      "page": 8,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "7d6fc87d939ee33213c9",
+      "payload_sha256": "a42082343934c42e26a65267f86b991981114bb65cc19a766ec5013ed952eb35",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180220843000+0800_7d6fc87d939ee33213c9.json",
+      "fetched_at": "2026-08-08T18:02:20.843000+08:00",
+      "page": 9,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "f98dd1b4ca56e05e7c23",
+      "payload_sha256": "6f72a8f547fc71709d8eec9daa1c01fd9d2447522b510251fb7c804ac42b21b7",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180223008000+0800_f98dd1b4ca56e05e7c23.json",
+      "fetched_at": "2026-08-08T18:02:23.008000+08:00",
+      "page": 10,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "d7a2fa5c3a27de28eef3",
+      "payload_sha256": "929bf3f83b249dcacfe1ae7ec88ee1472f28bfedfa6360da6eed99739a9093b8",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180225127000+0800_d7a2fa5c3a27de28eef3.json",
+      "fetched_at": "2026-08-08T18:02:25.127000+08:00",
+      "page": 11,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "6c1ca260ef08cdc11779",
+      "payload_sha256": "4377b9aa1b7640a3324a83c9ba7ff95721437efec7ea0e122bfd284e4b8dc95e",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180235118000+0800_6c1ca260ef08cdc11779.json",
+      "fetched_at": "2026-08-08T18:02:35.118000+08:00",
+      "page": 12,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "cbb0b1eb017a501ddc79",
+      "payload_sha256": "c94c567199d60d9a07dc86ced2de21f5c97ad6a76ac047fb0656025695bd662f",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180240668000+0800_cbb0b1eb017a501ddc79.json",
+      "fetched_at": "2026-08-08T18:02:40.668000+08:00",
+      "page": 13,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "e957c90fd9e91504b017",
+      "payload_sha256": "810cfd9a21f8c9da8d3e8f362bbcc0ed1ca8a837eddc0c7d65b54b3561e911c6",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180242575000+0800_e957c90fd9e91504b017.json",
+      "fetched_at": "2026-08-08T18:02:42.575000+08:00",
+      "page": 14,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "49f29168e3216afdca9e",
+      "payload_sha256": "124e4a6e0a70d2c4b381669b45d93c17f2ba9ea5ffa6ad4670a9b5df668ca53c",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180244529000+0800_49f29168e3216afdca9e.json",
+      "fetched_at": "2026-08-08T18:02:44.529000+08:00",
+      "page": 15,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "259699b6c5fa5707e19d",
+      "payload_sha256": "ba75998838aebe73240f8fdd5f4be2cbf32c499a0ad3adb88de1d87060c8694a",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180246582000+0800_259699b6c5fa5707e19d.json",
+      "fetched_at": "2026-08-08T18:02:46.582000+08:00",
+      "page": 16,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "60911badc3aeb2d15665",
+      "payload_sha256": "fb4d644d95280266a034ab892c13a4b409174b862835cd969bfa3ccd90418c4d",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180248574000+0800_60911badc3aeb2d15665.json",
+      "fetched_at": "2026-08-08T18:02:48.574000+08:00",
+      "page": 17,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "5d06f5ec53d9c75e9268",
+      "payload_sha256": "1b04ed3b6163709df232ef357dbaa6fcee183048b0dfe7fa0b88f5f0e326743b",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180250425000+0800_5d06f5ec53d9c75e9268.json",
+      "fetched_at": "2026-08-08T18:02:50.425000+08:00",
+      "page": 18,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "c1b20b9cb4599d79d220",
+      "payload_sha256": "a9146b8f8f3809900e8887f0a13fed04c908e5d6dc28ab4baf3029ccaa08fdde",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180252337000+0800_c1b20b9cb4599d79d220.json",
+      "fetched_at": "2026-08-08T18:02:52.337000+08:00",
+      "page": 19,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "cc34909653e907168cf5",
+      "payload_sha256": "bbbac0f15961ebb37243a87968a1315022a933e2da71226ab1dc70bbcac3e6f6",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180254523000+0800_cc34909653e907168cf5.json",
+      "fetched_at": "2026-08-08T18:02:54.523000+08:00",
+      "page": 20,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "fe2decbf3af59fbe2484",
+      "payload_sha256": "53fd619a67a0a7aed87c6e775cc4cb21fa45c18a1dce735b59c24e9aa3e82edf",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180256646000+0800_fe2decbf3af59fbe2484.json",
+      "fetched_at": "2026-08-08T18:02:56.646000+08:00",
+      "page": 21,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "ec7bf02ac9c985e61b1a",
+      "payload_sha256": "0ea03a2d1e8cfa0f310298648f831b0d492058f0881e4f10740f2d694134deb9",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180303785000+0800_ec7bf02ac9c985e61b1a.json",
+      "fetched_at": "2026-08-08T18:03:03.785000+08:00",
+      "page": 22,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "89a95a0082db6d6a3a83",
+      "payload_sha256": "47c07c8057b076c98a5e653d7a69b08d52e1e6343e90167b8cc347a418b6cdd9",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180306148000+0800_89a95a0082db6d6a3a83.json",
+      "fetched_at": "2026-08-08T18:03:06.148000+08:00",
+      "page": 23,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "8867414c9457cdc1d919",
+      "payload_sha256": "3072ab1264802682094db74c31155a9bacd5376c36473b39f3e3993414230881",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180308552000+0800_8867414c9457cdc1d919.json",
+      "fetched_at": "2026-08-08T18:03:08.552000+08:00",
+      "page": 24,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "f993bfa9bb87cd68d0b1",
+      "payload_sha256": "e19847483db066d681411d33afb9b98963a38ab036c6c1200f3cb52149f66944",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180310610000+0800_f993bfa9bb87cd68d0b1.json",
+      "fetched_at": "2026-08-08T18:03:10.610000+08:00",
+      "page": 25,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "8732918d5e6aee1e9c80",
+      "payload_sha256": "12ed0d30a369138325959ed52db3dad74154e3dc29596ff561962fa6e35ef3c4",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180312629000+0800_8732918d5e6aee1e9c80.json",
+      "fetched_at": "2026-08-08T18:03:12.629000+08:00",
+      "page": 26,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "91d9d9fa8e3b4dce2cde",
+      "payload_sha256": "63cb597a76b5bb9bf6819c8471299b6b11f7cec4c970ad26b07b95b37f65f641",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180314666000+0800_91d9d9fa8e3b4dce2cde.json",
+      "fetched_at": "2026-08-08T18:03:14.666000+08:00",
+      "page": 27,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "d9dc070ff35a323aab5f",
+      "payload_sha256": "bdd896192cc8fa1696f471c8cd374de4d73e432f64c02b2232c090811f90b133",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180316705000+0800_d9dc070ff35a323aab5f.json",
+      "fetched_at": "2026-08-08T18:03:16.705000+08:00",
+      "page": 28,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "4869bccc96a626e846b6",
+      "payload_sha256": "c4abe89b94b3fe642bd779a65b0d0d9657e6babb05434f79160f0a01546604c9",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180318649000+0800_4869bccc96a626e846b6.json",
+      "fetched_at": "2026-08-08T18:03:18.649000+08:00",
+      "page": 29,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "dc713cc63810e126a3ce",
+      "payload_sha256": "16a579eac3fb72f99998564d9ae9d9a8813409d9af63bcd761756a4888934ce8",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180320626000+0800_dc713cc63810e126a3ce.json",
+      "fetched_at": "2026-08-08T18:03:20.626000+08:00",
+      "page": 30,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "04e6581bd3a7daa02eec",
+      "payload_sha256": "84db83dd90ee0c30de95f90a281387e45520bc3e308ae61a0bab853fc33f4c0c",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180322663000+0800_04e6581bd3a7daa02eec.json",
+      "fetched_at": "2026-08-08T18:03:22.663000+08:00",
+      "page": 31,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "83a951e90f340c8e20c3",
+      "payload_sha256": "f16b1e41560a6076959b66b2f3ca2457ad998bf4ab1c6cbdee62f5589b49146e",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180332176000+0800_83a951e90f340c8e20c3.json",
+      "fetched_at": "2026-08-08T18:03:32.176000+08:00",
+      "page": 32,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "6100542935ed88ba9647",
+      "payload_sha256": "2484b0b2686d211a80e9b48f11ac329267be707fd82e2c2070db5b01070092fb",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180334118000+0800_6100542935ed88ba9647.json",
+      "fetched_at": "2026-08-08T18:03:34.118000+08:00",
+      "page": 33,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "deff5458ee7d353abaf7",
+      "payload_sha256": "8df0461c5b7fa3bdafad7a80203ad5ac088d6b1edf3c941538db215d040e27ab",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180336409000+0800_deff5458ee7d353abaf7.json",
+      "fetched_at": "2026-08-08T18:03:36.409000+08:00",
+      "page": 34,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "22df73cf9f24d19f490e",
+      "payload_sha256": "927e1e411f9808f850c4c649465eee4ab736d01cebd6da6a76f313f4a6e5edf0",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180338363000+0800_22df73cf9f24d19f490e.json",
+      "fetched_at": "2026-08-08T18:03:38.363000+08:00",
+      "page": 35,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "54cdc2d8e00e657dd4ab",
+      "payload_sha256": "6b263e2c141cddb2c395bb4b681f6b793cd5c131d00962cd74ba04ece364df44",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180340314000+0800_54cdc2d8e00e657dd4ab.json",
+      "fetched_at": "2026-08-08T18:03:40.314000+08:00",
+      "page": 36,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "a2d219712abd12f52841",
+      "payload_sha256": "3f161e708d96c2aa87d9e604c12aaa3b6dfd231f3d07c2a8a00a8003b70e6e44",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180342325000+0800_a2d219712abd12f52841.json",
+      "fetched_at": "2026-08-08T18:03:42.325000+08:00",
+      "page": 37,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "bd00eee4c78141782cdb",
+      "payload_sha256": "4822d8748694e8296b944636948134e8cb24ed2d677c2bcc58180a858d2d421f",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180344253000+0800_bd00eee4c78141782cdb.json",
+      "fetched_at": "2026-08-08T18:03:44.253000+08:00",
+      "page": 38,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "4421cdc26d93396f26d4",
+      "payload_sha256": "1b54d950fa6e6ed38f7690b0aa6c9d6efadcb900647ef0181e601a46c8696c12",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180346311000+0800_4421cdc26d93396f26d4.json",
+      "fetched_at": "2026-08-08T18:03:46.311000+08:00",
+      "page": 39,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "99f404c80891ab6b94ac",
+      "payload_sha256": "89930ebec72aa5e1b705443a47e27d5d5f9c2175763c96b726860b235a278db0",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180348664000+0800_99f404c80891ab6b94ac.json",
+      "fetched_at": "2026-08-08T18:03:48.664000+08:00",
+      "page": 40,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "577de2627d637bc82fb4",
+      "payload_sha256": "55b2dd590c1d438654cc2f70786dcce688cdab6e21a16c7411eea6aa0b00721b",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180350586000+0800_577de2627d637bc82fb4.json",
+      "fetched_at": "2026-08-08T18:03:50.586000+08:00",
+      "page": 41,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "faa446efe7f88b3f772e",
+      "payload_sha256": "9be132c6f5e40ddf838ab43155977f39abd650672669760bbbf3f569a0fcd6df",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180358921000+0800_faa446efe7f88b3f772e.json",
+      "fetched_at": "2026-08-08T18:03:58.921000+08:00",
+      "page": 42,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "f26a04046d31e059e306",
+      "payload_sha256": "b8851d8a4cca4d68bc8b01a72ffa554a9ddc868b0c97c6765624ee3e7635041e",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180400808000+0800_f26a04046d31e059e306.json",
+      "fetched_at": "2026-08-08T18:04:00.808000+08:00",
+      "page": 43,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "bf8b559a9d7a224de5a0",
+      "payload_sha256": "9a74e12236de6f1b03445579cad1a24227826ba97b8741955f16b46294c6a17c",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180402802000+0800_bf8b559a9d7a224de5a0.json",
+      "fetched_at": "2026-08-08T18:04:02.802000+08:00",
+      "page": 44,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "875f42189422e0869df1",
+      "payload_sha256": "37f9ebb9b68a21f93a647aa2bce6f869d8614a7c3ee56a5b3b8d1f3a18e311c1",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180404794000+0800_875f42189422e0869df1.json",
+      "fetched_at": "2026-08-08T18:04:04.794000+08:00",
+      "page": 45,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "0078155d2df2cf386697",
+      "payload_sha256": "6dd8327fdcd2668a666986e9f954d9d45d185587cfbaf7d1cd56ace84c2e2dde",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180406742000+0800_0078155d2df2cf386697.json",
+      "fetched_at": "2026-08-08T18:04:06.742000+08:00",
+      "page": 46,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "dec690d29e8062d0c558",
+      "payload_sha256": "594129ab0cf20b1d72a4efd064b2ef0504a7cef85adef738ce4dc0ece2dd300b",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180408600000+0800_dec690d29e8062d0c558.json",
+      "fetched_at": "2026-08-08T18:04:08.600000+08:00",
+      "page": 47,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "7fe48b424a4e248e68b6",
+      "payload_sha256": "22be8f6e73dc7f0f0348aaf03aea4b51943679ce77cb18708773a213abfe83fb",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180410427000+0800_7fe48b424a4e248e68b6.json",
+      "fetched_at": "2026-08-08T18:04:10.427000+08:00",
+      "page": 48,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "199082bcd0a7704050fd",
+      "payload_sha256": "916c10863fd43686e9a2531b75c24081374b71e1a1c7c0c4fd41e9c2e34f7532",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180412627000+0800_199082bcd0a7704050fd.json",
+      "fetched_at": "2026-08-08T18:04:12.627000+08:00",
+      "page": 49,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "90a991b94051285b3ba9",
+      "payload_sha256": "b3b3d0e3033b03461d44eec1f12a5ce2c30f290fbb6365449b33b9aeeb96867d",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180414643000+0800_90a991b94051285b3ba9.json",
+      "fetched_at": "2026-08-08T18:04:14.643000+08:00",
+      "page": 50,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "52f7b1d4fc08e6792c6e",
+      "payload_sha256": "aac402d859bb5f020d23d610ef8669be203d3cd0e531120d5711d3a4ee5a9b26",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180416654000+0800_52f7b1d4fc08e6792c6e.json",
+      "fetched_at": "2026-08-08T18:04:16.654000+08:00",
+      "page": 51,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "ce99d219b4288889a5e8",
+      "payload_sha256": "8fd7569256a29b3e239743eb9a5f081cde7a8ed39f806cc0d02e3ddbd8df9a06",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180423486000+0800_ce99d219b4288889a5e8.json",
+      "fetched_at": "2026-08-08T18:04:23.486000+08:00",
+      "page": 52,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "5cc1afea2bf54ae085f8",
+      "payload_sha256": "edb75d54f22b54e8a2cd0630692df352a6480d0df3cf5a21953aaee3d622067e",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180425509000+0800_5cc1afea2bf54ae085f8.json",
+      "fetched_at": "2026-08-08T18:04:25.509000+08:00",
+      "page": 53,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "8ecfb6cf23ab3e6fcce7",
+      "payload_sha256": "13892c4bd31bc7110d54729e55e109e2f611dcc783521cf7b6bb3b38254f4f6a",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180427802000+0800_8ecfb6cf23ab3e6fcce7.json",
+      "fetched_at": "2026-08-08T18:04:27.802000+08:00",
+      "page": 54,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "0469c16c4edebf245ca7",
+      "payload_sha256": "34e9a525bf789850c0608870eb53c6ab291d4df2ed211a13d97f49bca536d77a",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180429864000+0800_0469c16c4edebf245ca7.json",
+      "fetched_at": "2026-08-08T18:04:29.864000+08:00",
+      "page": 55,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 100
+    },
+    {
+      "record_id": "4286ed55913134390e56",
+      "payload_sha256": "89ef9db571753ab895dbcfd85cf3059f70a9cc91047aea6291bde60c4d9d60f6",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T180431770000+0800_4286ed55913134390e56.json",
+      "fetched_at": "2026-08-08T18:04:31.770000+08:00",
+      "page": 56,
+      "limit": 100,
+      "reported_total_count": 5543,
+      "returned_row_count": 43
+    }
+  ],
+  "coverage": {
+    "source_snapshot_count": 56,
+    "page_count": 56,
+    "reported_total_count": 5543,
+    "security_master_count": 5543,
+    "market_bars_daily_count": 5539,
+    "valuation_snapshots_count": 5539,
+    "skipped_market_bars": 4,
+    "skipped_valuations": 4
+  },
+  "tables": {
+    "security_master": {
+      "file": "security_master.jsonl",
+      "record_count": 5543,
+      "primary_key": [
+        "security_code",
+        "observed_date"
+      ],
+      "sha256": "95322f128b051c0ea6bdc8f63cc9268366e1936f1a246f522b77c50f941e65b3"
+    },
+    "market_bars_daily": {
+      "file": "market_bars_daily.jsonl",
+      "record_count": 5539,
+      "primary_key": [
+        "security_code",
+        "trade_date",
+        "adjustment_type"
+      ],
+      "sha256": "25ed45bc39f3ed109b8a1569ce7b96c1f1619866f1fff18eecd94ed280269876"
+    },
+    "valuation_snapshots": {
+      "file": "valuation_snapshots.jsonl",
+      "record_count": 5539,
+      "primary_key": [
+        "security_code",
+        "as_of_date"
+      ],
+      "sha256": "d525fc88ef1137e1a92c3eef9b5d0a7e4e44dbd69aa80292ceb314f0f66ed1f3"
+    }
+  },
+  "unmapped_fields": [
+    "a股市值(不含限售股)[20260807]",
+    "市盈率(pe)[20260807]",
+    "所属同花顺行业",
+    "振幅[20260807]",
+    "最新涨跌幅",
+    "涨跌[20260807]",
+    "涨跌幅:前复权[20260807]",
+    "预测市盈率(pe,最新预测)[20261231]",
+    "预测市盈率(pe,最新预测)[20271231]",
+    "预测市盈率(pe,最新预测)[20281231]"
+  ]
+}
