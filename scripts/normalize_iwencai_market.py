@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize one saved iWencai response into core market-data tables."""
+"""Normalize saved iWencai responses into core market-data tables."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -28,11 +28,13 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
 )
 
 
-NORMALIZER_VERSION = "1.0.0"
-RECORD_SCHEMA_VERSION = 1
+NORMALIZER_VERSION = "2.0.0"
+RECORD_SCHEMA_VERSION = 2
+BUNDLE_SCHEMA_VERSION = 2
 DEFAULT_NORMALIZED_ROOT = REPOSITORY_ROOT / "data" / "normalized"
 PROJECT_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
 SECURITY_CODE_PATTERN = re.compile(r"^\d{6}\.(?:SH|SZ|BJ)$")
+COMPACT_DATE_PATTERN = re.compile(r"^\d{8}$")
 TABLE_FILES = {
     "security_master": "security_master.jsonl",
     "market_bars_daily": "market_bars_daily.jsonl",
@@ -46,7 +48,7 @@ PRIMARY_KEYS = {
 
 
 class NormalizationError(ValueError):
-    """Raised when a raw response cannot be normalized without guessing."""
+    """Raised when raw responses cannot be normalized without guessing."""
 
 
 def _canonical_payload(payload: Any) -> bytes:
@@ -102,6 +104,41 @@ def _load_envelope(snapshot_path: Path) -> Tuple[Dict[str, Any], Dict[str, Any]]
     return metadata, payload
 
 
+def _reported_total(meta: Dict[str, Any]) -> Optional[int]:
+    candidates = [meta.get("code_count"), meta.get("total")]
+    extra = meta.get("extra")
+    if isinstance(extra, dict):
+        candidates.append(extra.get("code_count"))
+    for candidate in candidates:
+        if isinstance(candidate, int):
+            return candidate
+        if isinstance(candidate, str) and candidate.isdigit():
+            return int(candidate)
+    return None
+
+
+def _optional_int(value: Any) -> Optional[int]:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _component_page_info(component: Dict[str, Any]) -> Dict[str, Optional[int]]:
+    data = component["data"]
+    meta = data.get("meta")
+    if not isinstance(meta, dict):
+        meta = {}
+    rows = data.get("datas")
+    return {
+        "page": _optional_int(meta.get("page")),
+        "limit": _optional_int(meta.get("limit")),
+        "reported_total_count": _reported_total(meta),
+        "returned_row_count": len(rows) if isinstance(rows, list) else 0,
+    }
+
+
 def _column_descriptors(
     component: Dict[str, Any],
     *,
@@ -143,7 +180,7 @@ def _select_market_component(
     required = {
         "security_code",
         "security_name",
-        "market_type",
+        "market_memberships",
         "close",
         "market_cap",
         "pe_ttm",
@@ -170,12 +207,12 @@ def _select_market_component(
     return candidates[0]
 
 
-def _unique_descriptor(
+def _matching_descriptors(
     descriptors: List[Dict[str, Any]],
     canonical_name: str,
     *,
     adjustment_type: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> List[Dict[str, Any]]:
     matches = []
     for descriptor in descriptors:
         parsed = descriptor["parsed"]
@@ -184,6 +221,20 @@ def _unique_descriptor(
         if adjustment_type is not None and parsed["adjustment_type"] != adjustment_type:
             continue
         matches.append(descriptor)
+    return matches
+
+
+def _unique_descriptor(
+    descriptors: List[Dict[str, Any]],
+    canonical_name: str,
+    *,
+    adjustment_type: Optional[str] = None,
+) -> Dict[str, Any]:
+    matches = _matching_descriptors(
+        descriptors,
+        canonical_name,
+        adjustment_type=adjustment_type,
+    )
     if len(matches) != 1:
         qualifier = f" ({adjustment_type})" if adjustment_type else ""
         raise NormalizationError(
@@ -192,10 +243,47 @@ def _unique_descriptor(
     return matches[0]
 
 
+def _optional_descriptor(
+    descriptors: List[Dict[str, Any]],
+    canonical_name: str,
+    *,
+    adjustment_type: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    matches = _matching_descriptors(
+        descriptors,
+        canonical_name,
+        adjustment_type=adjustment_type,
+    )
+    if len(matches) > 1:
+        qualifier = f" ({adjustment_type})" if adjustment_type else ""
+        raise NormalizationError(
+            f"expected at most one {canonical_name}{qualifier} column; found {len(matches)}"
+        )
+    return matches[0] if matches else None
+
+
+def _row_value(
+    row: Dict[str, Any],
+    descriptor: Optional[Dict[str, Any]],
+) -> Tuple[bool, Any]:
+    if descriptor is None:
+        return False, None
+    row_key = descriptor["row_key"]
+    if row_key not in row or row[row_key] in (None, ""):
+        return False, None
+    return True, row[row_key]
+
+
 def _required_text(value: Any, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise NormalizationError(f"{field_name} must be a non-empty string")
     return value.strip()
+
+
+def _optional_text(value: Any, field_name: str) -> Optional[str]:
+    if value in (None, ""):
+        return None
+    return _required_text(value, field_name)
 
 
 def _required_number(value: Any, field_name: str) -> Any:
@@ -218,7 +306,37 @@ def _required_number(value: Any, field_name: str) -> Any:
     raise NormalizationError(f"{field_name} must be numeric")
 
 
-def _lineage(descriptor: Dict[str, Any]) -> Dict[str, Any]:
+def _optional_number(value: Any, field_name: str) -> Optional[Any]:
+    if value in (None, ""):
+        return None
+    return _required_number(value, field_name)
+
+
+def _optional_date(value: Any, field_name: str) -> Optional[str]:
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not COMPACT_DATE_PATTERN.fullmatch(text):
+        raise NormalizationError(f"{field_name} must use YYYYMMDD")
+    try:
+        return datetime.strptime(text, "%Y%m%d").date().isoformat()
+    except ValueError as error:
+        raise NormalizationError(f"{field_name} contains an invalid date") from error
+
+
+def _market_memberships(value: Any) -> List[str]:
+    text = _required_text(value, "market_memberships")
+    memberships: List[str] = []
+    for item in text.split(";"):
+        normalized = item.strip()
+        if normalized and normalized not in memberships:
+            memberships.append(normalized)
+    if not memberships:
+        raise NormalizationError("market_memberships must contain at least one value")
+    return memberships
+
+
+def _lineage(descriptor: Dict[str, Any], *, value_present: bool) -> Dict[str, Any]:
     parsed = descriptor["parsed"]
     return {
         "raw_field_name": parsed["raw_field_name"],
@@ -235,7 +353,23 @@ def _lineage(descriptor: Dict[str, Any]) -> Dict[str, Any]:
         "source_type": descriptor["source_type"],
         "source_unit": descriptor["source_unit"],
         "source_timestamp": descriptor["source_timestamp"],
+        "value_status": "present" if value_present else "missing_in_source",
     }
+
+
+def _field_lineage(
+    selected: Dict[str, Optional[Dict[str, Any]]],
+    names: Iterable[str],
+    row: Dict[str, Any],
+) -> Dict[str, Dict[str, Any]]:
+    result: Dict[str, Dict[str, Any]] = {}
+    for name in names:
+        descriptor = selected.get(name)
+        if descriptor is None:
+            continue
+        present, _ = _row_value(row, descriptor)
+        result[name] = _lineage(descriptor, value_present=present)
+    return result
 
 
 def _record_context(
@@ -269,12 +403,47 @@ def _validate_unique_primary_keys(
         seen.add(key)
 
 
+def _sort_and_validate_tables(tables: Dict[str, List[Dict[str, Any]]]) -> None:
+    for table_name, records in tables.items():
+        records.sort(
+            key=lambda record: tuple(record[key] for key in PRIMARY_KEYS[table_name])
+        )
+        _validate_unique_primary_keys(table_name, records)
+
+
+def _validate_price_bar(
+    *,
+    security_code: str,
+    open_price: Optional[Any],
+    high: Optional[Any],
+    low: Optional[Any],
+    close: Any,
+    volume: Optional[Any],
+    turnover: Optional[Any],
+) -> None:
+    prices = [price for price in (open_price, high, low, close) if price is not None]
+    if any(price <= 0 for price in prices):
+        raise NormalizationError(f"{security_code} contains a non-positive price")
+    if high is not None and low is not None:
+        if high < low:
+            raise NormalizationError(f"{security_code} high is below low")
+        for label, price in (("open", open_price), ("close", close)):
+            if price is not None and not low <= price <= high:
+                raise NormalizationError(
+                    f"{security_code} {label} is outside the daily range"
+                )
+    if volume is not None and volume < 0:
+        raise NormalizationError(f"{security_code} contains negative volume")
+    if turnover is not None and turnover < 0:
+        raise NormalizationError(f"{security_code} contains negative turnover")
+
+
 def build_normalized_tables(
     snapshot_path: Path,
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
 ) -> Dict[str, Any]:
-    """Build deterministic normalized records without writing output files."""
+    """Build deterministic normalized records for one raw snapshot."""
     metadata, payload = _load_envelope(snapshot_path)
     mapping_version, mappings = load_field_mappings(mapping_file)
     component, descriptors = _select_market_component(
@@ -283,24 +452,48 @@ def build_normalized_tables(
         mapping_version=mapping_version,
     )
 
-    selected = {
+    selected: Dict[str, Optional[Dict[str, Any]]] = {
         "security_code": _unique_descriptor(descriptors, "security_code"),
         "security_name": _unique_descriptor(descriptors, "security_name"),
-        "market_type": _unique_descriptor(descriptors, "market_type"),
+        "market_memberships": _unique_descriptor(descriptors, "market_memberships"),
+        "listing_date": _optional_descriptor(descriptors, "listing_date"),
+        "listing_status": _optional_descriptor(descriptors, "listing_status"),
+        "open": _optional_descriptor(
+            descriptors,
+            "open",
+            adjustment_type="unadjusted",
+        ),
+        "high": _optional_descriptor(
+            descriptors,
+            "high",
+            adjustment_type="unadjusted",
+        ),
+        "low": _optional_descriptor(
+            descriptors,
+            "low",
+            adjustment_type="unadjusted",
+        ),
         "close": _unique_descriptor(
             descriptors,
             "close",
             adjustment_type="unadjusted",
         ),
+        "volume": _optional_descriptor(descriptors, "volume"),
+        "turnover": _optional_descriptor(descriptors, "turnover"),
         "market_cap": _unique_descriptor(descriptors, "market_cap"),
         "pe_ttm": _unique_descriptor(descriptors, "pe_ttm"),
     }
 
-    close_date = selected["close"]["parsed"]["as_of_date"]
-    market_cap_date = selected["market_cap"]["parsed"]["as_of_date"]
-    pe_date = selected["pe_ttm"]["parsed"]["as_of_date"]
+    close_date = selected["close"]["parsed"]["as_of_date"]  # type: ignore[index]
     if not close_date:
         raise NormalizationError("close column must contain a valid trade date")
+    for name in ("open", "high", "low", "volume", "turnover"):
+        descriptor = selected[name]
+        if descriptor is not None and descriptor["parsed"]["as_of_date"] != close_date:
+            raise NormalizationError(f"{name} must share the close trade date")
+
+    market_cap_date = selected["market_cap"]["parsed"]["as_of_date"]  # type: ignore[index]
+    pe_date = selected["pe_ttm"]["parsed"]["as_of_date"]  # type: ignore[index]
     if not market_cap_date or market_cap_date != pe_date:
         raise NormalizationError("valuation fields must share one valid as-of date")
 
@@ -315,64 +508,160 @@ def build_normalized_tables(
     if not isinstance(rows, list) or not rows:
         raise NormalizationError("core market table must contain at least one row")
 
+    skipped_market_bars = 0
+    skipped_valuations = 0
     for row_index, row in enumerate(rows):
         if not isinstance(row, dict):
             raise NormalizationError(f"row {row_index} must be a JSON object")
 
-        def value(name: str) -> Any:
-            row_key = selected[name]["row_key"]
-            if row_key not in row:
-                raise NormalizationError(f"row {row_index} is missing {row_key}")
-            return row[row_key]
-
-        security_code = _required_text(value("security_code"), "security_code")
+        code_present, code_value = _row_value(row, selected["security_code"])
+        if not code_present:
+            raise NormalizationError(f"row {row_index} is missing security_code")
+        security_code = _required_text(code_value, "security_code")
         if not SECURITY_CODE_PATTERN.fullmatch(security_code):
             raise NormalizationError(f"unsupported A-share security code: {security_code}")
+        exchange = security_code.rsplit(".", 1)[1]
+
+        name_present, name_value = _row_value(row, selected["security_name"])
+        memberships_present, memberships_value = _row_value(
+            row,
+            selected["market_memberships"],
+        )
+        if not name_present or not memberships_present:
+            raise NormalizationError(f"row {row_index} is missing security identity data")
+        _, listing_date_value = _row_value(row, selected["listing_date"])
+        _, listing_status_value = _row_value(row, selected["listing_status"])
 
         common = {**context, "security_code": security_code}
         tables["security_master"].append(
             {
                 **common,
                 "observed_date": observed_date,
-                "security_name": _required_text(value("security_name"), "security_name"),
-                "market_type": _required_text(value("market_type"), "market_type"),
-                "field_lineage": {
-                    name: _lineage(selected[name])
-                    for name in ("security_code", "security_name", "market_type")
-                },
-            }
-        )
-        tables["market_bars_daily"].append(
-            {
-                **common,
-                "trade_date": close_date,
-                "close": _required_number(value("close"), "close"),
-                "currency": selected["close"]["parsed"]["unit"],
-                "adjustment_type": selected["close"]["parsed"]["adjustment_type"],
-                "field_lineage": {
-                    name: _lineage(selected[name])
-                    for name in ("security_code", "close")
-                },
-            }
-        )
-        tables["valuation_snapshots"].append(
-            {
-                **common,
-                "as_of_date": market_cap_date,
-                "market_cap": _required_number(value("market_cap"), "market_cap"),
-                "market_cap_currency": selected["market_cap"]["parsed"]["unit"],
-                "pe_ttm": _required_number(value("pe_ttm"), "pe_ttm"),
-                "field_lineage": {
-                    name: _lineage(selected[name])
-                    for name in ("security_code", "market_cap", "pe_ttm")
+                "exchange": exchange,
+                "security_name": _required_text(name_value, "security_name"),
+                "market_memberships": _market_memberships(memberships_value),
+                "listing_date": _optional_date(listing_date_value, "listing_date"),
+                "listing_status": _optional_text(
+                    listing_status_value,
+                    "listing_status",
+                ),
+                "field_lineage": _field_lineage(
+                    selected,
+                    (
+                        "security_code",
+                        "security_name",
+                        "market_memberships",
+                        "listing_date",
+                        "listing_status",
+                    ),
+                    row,
+                ),
+                "derived_lineage": {
+                    "exchange": {
+                        "derived_from": "security_code",
+                        "rule": "suffix_after_dot",
+                        "normalizer_version": NORMALIZER_VERSION,
+                    }
                 },
             }
         )
 
-    for table_name, records in tables.items():
-        records.sort(key=lambda record: tuple(record[key] for key in PRIMARY_KEYS[table_name]))
-        _validate_unique_primary_keys(table_name, records)
+        close_present, close_value = _row_value(row, selected["close"])
+        if close_present:
+            _, open_value = _row_value(row, selected["open"])
+            _, high_value = _row_value(row, selected["high"])
+            _, low_value = _row_value(row, selected["low"])
+            _, volume_value = _row_value(row, selected["volume"])
+            _, turnover_value = _row_value(row, selected["turnover"])
+            open_price = _optional_number(open_value, "open")
+            high = _optional_number(high_value, "high")
+            low = _optional_number(low_value, "low")
+            close = _required_number(close_value, "close")
+            volume = _optional_number(volume_value, "volume")
+            turnover = _optional_number(turnover_value, "turnover")
+            _validate_price_bar(
+                security_code=security_code,
+                open_price=open_price,
+                high=high,
+                low=low,
+                close=close,
+                volume=volume,
+                turnover=turnover,
+            )
+            tables["market_bars_daily"].append(
+                {
+                    **common,
+                    "trade_date": close_date,
+                    "open": open_price,
+                    "high": high,
+                    "low": low,
+                    "close": close,
+                    "volume": volume,
+                    "volume_unit": (
+                        selected["volume"]["parsed"]["unit"]
+                        if selected["volume"] is not None
+                        else None
+                    ),
+                    "turnover": turnover,
+                    "turnover_currency": (
+                        selected["turnover"]["parsed"]["unit"]
+                        if selected["turnover"] is not None
+                        else None
+                    ),
+                    "currency": selected["close"]["parsed"]["unit"],  # type: ignore[index]
+                    "adjustment_type": selected["close"]["parsed"][  # type: ignore[index]
+                        "adjustment_type"
+                    ],
+                    "field_lineage": _field_lineage(
+                        selected,
+                        (
+                            "security_code",
+                            "open",
+                            "high",
+                            "low",
+                            "close",
+                            "volume",
+                            "turnover",
+                        ),
+                        row,
+                    ),
+                }
+            )
+        else:
+            skipped_market_bars += 1
 
+        market_cap_present, market_cap_value = _row_value(row, selected["market_cap"])
+        pe_present, pe_value = _row_value(row, selected["pe_ttm"])
+        if market_cap_present != pe_present:
+            raise NormalizationError(
+                f"{security_code} has incomplete valuation fields"
+            )
+        if market_cap_present:
+            market_cap = _required_number(market_cap_value, "market_cap")
+            if market_cap <= 0:
+                raise NormalizationError(
+                    f"{security_code} contains non-positive market_cap"
+                )
+            tables["valuation_snapshots"].append(
+                {
+                    **common,
+                    "as_of_date": market_cap_date,
+                    "market_cap": market_cap,
+                    "market_cap_currency": selected["market_cap"]["parsed"][  # type: ignore[index]
+                        "unit"
+                    ],
+                    "pe_ttm": _required_number(pe_value, "pe_ttm"),
+                    "field_lineage": _field_lineage(
+                        selected,
+                        ("security_code", "market_cap", "pe_ttm"),
+                        row,
+                    ),
+                }
+            )
+        else:
+            skipped_valuations += 1
+
+    _sort_and_validate_tables(tables)
     unmapped_fields = sorted(
         descriptor["parsed"]["raw_field_name"]
         for descriptor in descriptors
@@ -380,9 +669,137 @@ def build_normalized_tables(
     )
     return {
         "metadata": metadata,
+        "snapshot_path": snapshot_path,
         "mapping_version": mapping_version,
         "tables": tables,
         "unmapped_fields": unmapped_fields,
+        "page_info": _component_page_info(component),
+        "skipped_market_bars": skipped_market_bars,
+        "skipped_valuations": skipped_valuations,
+    }
+
+
+def _batch_record_id(
+    raw_record_ids: Sequence[str],
+    mapping_version: str,
+) -> str:
+    identity = "\0".join(
+        [NORMALIZER_VERSION, mapping_version, *raw_record_ids]
+    ).encode("utf-8")
+    return hashlib.sha256(identity).hexdigest()[:20]
+
+
+def build_normalized_batch(
+    snapshot_paths: Sequence[Path],
+    *,
+    mapping_file: Path = DEFAULT_MAPPING_FILE,
+) -> Dict[str, Any]:
+    """Combine a complete ordered page set into one normalized bundle."""
+    if not snapshot_paths:
+        raise NormalizationError("at least one raw snapshot is required")
+    resolved_paths = [Path(path) for path in snapshot_paths]
+    if len({path.resolve() for path in resolved_paths}) != len(resolved_paths):
+        raise NormalizationError("raw snapshot paths must be unique")
+
+    parts = [
+        build_normalized_tables(path, mapping_file=mapping_file)
+        for path in resolved_paths
+    ]
+    if all(part["page_info"]["page"] is not None for part in parts):
+        parts.sort(key=lambda part: part["page_info"]["page"])
+    else:
+        parts.sort(key=lambda part: _parse_timestamp(part["metadata"]["fetched_at"]))
+
+    sources = {part["metadata"]["source"] for part in parts}
+    queries = {part["metadata"].get("query") for part in parts}
+    mapping_versions = {part["mapping_version"] for part in parts}
+    if len(sources) != 1 or len(queries) != 1 or len(mapping_versions) != 1:
+        raise NormalizationError("batch snapshots must share source, query, and mapping")
+    mapping_version = parts[0]["mapping_version"]
+
+    page_numbers = [part["page_info"]["page"] for part in parts]
+    reported_totals = {
+        part["page_info"]["reported_total_count"]
+        for part in parts
+        if part["page_info"]["reported_total_count"] is not None
+    }
+    if len(parts) > 1:
+        if any(page is None for page in page_numbers):
+            raise NormalizationError("multi-snapshot batch requires page metadata")
+        expected_pages = list(range(1, len(parts) + 1))
+        if page_numbers != expected_pages:
+            raise NormalizationError(
+                f"batch pages must be complete and sequential: {page_numbers}"
+            )
+        if len(reported_totals) != 1:
+            raise NormalizationError("batch pages must report one total row count")
+
+    tables: Dict[str, List[Dict[str, Any]]] = {
+        table_name: [] for table_name in TABLE_FILES
+    }
+    for part in parts:
+        for table_name in TABLE_FILES:
+            tables[table_name].extend(part["tables"][table_name])
+    _sort_and_validate_tables(tables)
+
+    reported_total = next(iter(reported_totals)) if reported_totals else None
+    if reported_total is not None and len(tables["security_master"]) != reported_total:
+        raise NormalizationError(
+            "security_master count does not match the reported source total"
+        )
+
+    timestamps = [
+        _parse_timestamp(part["metadata"]["fetched_at"]) for part in parts
+    ]
+    raw_records = [
+        {
+            "record_id": part["metadata"]["record_id"],
+            "payload_sha256": part["metadata"]["payload_sha256"],
+            "snapshot": _display_path(part["snapshot_path"]),
+            "fetched_at": part["metadata"]["fetched_at"],
+            **part["page_info"],
+        }
+        for part in parts
+    ]
+    raw_record_ids = [record["record_id"] for record in raw_records]
+    bundle_id = (
+        raw_record_ids[0]
+        if len(raw_record_ids) == 1
+        else _batch_record_id(raw_record_ids, mapping_version)
+    )
+
+    return {
+        "metadata": {
+            "source": parts[0]["metadata"]["source"],
+            "query": parts[0]["metadata"].get("query"),
+            "fetched_at_start": min(timestamps).isoformat(timespec="microseconds"),
+            "fetched_at_end": max(timestamps).isoformat(timespec="microseconds"),
+            "record_id": bundle_id,
+            "raw_records": raw_records,
+        },
+        "mapping_version": mapping_version,
+        "tables": tables,
+        "unmapped_fields": sorted(
+            {
+                field
+                for part in parts
+                for field in part["unmapped_fields"]
+            }
+        ),
+        "coverage": {
+            "source_snapshot_count": len(parts),
+            "page_count": len(parts) if all(page is not None for page in page_numbers) else None,
+            "reported_total_count": reported_total,
+            "security_master_count": len(tables["security_master"]),
+            "market_bars_daily_count": len(tables["market_bars_daily"]),
+            "valuation_snapshots_count": len(tables["valuation_snapshots"]),
+            "skipped_market_bars": sum(
+                part["skipped_market_bars"] for part in parts
+            ),
+            "skipped_valuations": sum(
+                part["skipped_valuations"] for part in parts
+            ),
+        },
     }
 
 
@@ -410,12 +827,11 @@ def _write_bytes(path: Path, content: bytes) -> None:
 def write_normalized_bundle(
     built: Dict[str, Any],
     *,
-    snapshot_path: Path,
     normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
 ) -> Path:
-    """Atomically write one immutable normalization bundle."""
+    """Atomically write one immutable single- or multi-snapshot bundle."""
     metadata = built["metadata"]
-    fetched_at = _parse_timestamp(metadata["fetched_at"])
+    fetched_at = _parse_timestamp(metadata["fetched_at_start"])
     destination = normalized_root.joinpath(
         "runs",
         metadata["source"],
@@ -442,15 +858,16 @@ def write_normalized_bundle(
             }
 
         manifest = {
-            "bundle_schema_version": 1,
+            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
             "normalizer_version": NORMALIZER_VERSION,
             "mapping_version": built["mapping_version"],
+            "bundle_id": metadata["record_id"],
             "source": metadata["source"],
             "query": metadata.get("query"),
-            "fetched_at": metadata["fetched_at"],
-            "raw_record_id": metadata["record_id"],
-            "raw_payload_sha256": metadata["payload_sha256"],
-            "raw_snapshot": _display_path(snapshot_path),
+            "fetched_at_start": metadata["fetched_at_start"],
+            "fetched_at_end": metadata["fetched_at_end"],
+            "raw_records": metadata["raw_records"],
+            "coverage": built["coverage"],
             "tables": table_manifest,
             "unmapped_fields": built["unmapped_fields"],
         }
@@ -467,25 +884,39 @@ def write_normalized_bundle(
     return destination
 
 
+def normalize_snapshots(
+    snapshot_paths: Sequence[Path],
+    *,
+    mapping_file: Path = DEFAULT_MAPPING_FILE,
+    normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
+) -> Path:
+    built = build_normalized_batch(snapshot_paths, mapping_file=mapping_file)
+    return write_normalized_bundle(built, normalized_root=normalized_root)
+
+
 def normalize_snapshot(
     snapshot_path: Path,
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
     normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
 ) -> Path:
-    built = build_normalized_tables(snapshot_path, mapping_file=mapping_file)
-    return write_normalized_bundle(
-        built,
-        snapshot_path=snapshot_path,
+    return normalize_snapshots(
+        [snapshot_path],
+        mapping_file=mapping_file,
         normalized_root=normalized_root,
     )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Normalize one saved iWencai response into core market tables."
+        description="Normalize saved iWencai responses into core market tables."
     )
-    parser.add_argument("snapshot", type=Path, help="Saved raw-response snapshot")
+    parser.add_argument(
+        "snapshots",
+        nargs="+",
+        type=Path,
+        help="One or more saved raw-response snapshots",
+    )
     parser.add_argument(
         "--mapping-file",
         type=Path,
@@ -504,8 +935,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        destination = normalize_snapshot(
-            args.snapshot,
+        destination = normalize_snapshots(
+            args.snapshots,
             mapping_file=args.mapping_file,
             normalized_root=args.normalized_root,
         )

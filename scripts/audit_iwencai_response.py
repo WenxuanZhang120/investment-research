@@ -23,6 +23,18 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
 def extract_table_components(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Find table components in the observed iWencai response structure."""
     components: List[Dict[str, Any]] = []
+
+    pagination_answer = payload.get("answer")
+    if isinstance(pagination_answer, dict):
+        pagination_components = pagination_answer.get("components", [])
+        if isinstance(pagination_components, list):
+            for component in pagination_components:
+                if not isinstance(component, dict):
+                    continue
+                data = component.get("data")
+                if isinstance(data, dict) and isinstance(data.get("columns"), list):
+                    components.append(component)
+
     answers = payload.get("data", {}).get("answer", [])
     if not isinstance(answers, list):
         return components
