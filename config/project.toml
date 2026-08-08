@@ -1,5 +1,5 @@
 # 项目级基础配置。这里只保存长期稳定、非敏感的约定。
-schema_version = 1
+schema_version = 2
 
 [project]
 name = "investment-research"
@@ -35,6 +35,13 @@ raw_required_fields = [
 normalized_required_fields = [
   "source",
   "fetched_at",
+  "raw_record_id",
+  "raw_snapshot",
+  "normalizer_version",
+  "mapping_version",
+  "field_lineage",
+]
+normalized_field_lineage_required_fields = [
   "raw_field_name",
   "canonical_field_name",
   "parser_version",
