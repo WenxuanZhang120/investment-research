@@ -46,6 +46,23 @@ class ParseIwencaiFieldsTests(unittest.TestCase):
         self.assertEqual(result["canonical_field_name"], "pe_ttm")
         self.assertEqual(result["as_of_date"], "2026-08-07")
 
+    def test_maps_observed_unadjusted_close_field(self) -> None:
+        result = self.parse("收盘价:不复权[20260807]")
+
+        self.assertEqual(result["canonical_field_name"], "close")
+        self.assertEqual(result["unit"], "CNY")
+        self.assertEqual(result["adjustment_type"], "unadjusted")
+        self.assertEqual(result["as_of_date"], "2026-08-07")
+
+    def test_maps_observed_security_identity_fields(self) -> None:
+        code = self.parse("股票代码")
+        name = self.parse("股票简称")
+
+        self.assertEqual(code["canonical_field_name"], "security_code")
+        self.assertEqual(name["canonical_field_name"], "security_name")
+        self.assertEqual(code["mapping_status"], "mapped")
+        self.assertEqual(name["mapping_status"], "mapped")
+
     def test_parses_quarterly_report_period(self) -> None:
         result = self.parse("归母净利润[2026一季报]")
 
