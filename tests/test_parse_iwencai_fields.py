@@ -57,11 +57,37 @@ class ParseIwencaiFieldsTests(unittest.TestCase):
     def test_maps_observed_security_identity_fields(self) -> None:
         code = self.parse("股票代码")
         name = self.parse("股票简称")
+        memberships = self.parse("股票市场类型")
+        listing_date = self.parse("新股上市日期")
+        listing_status = self.parse("上市状态")
 
         self.assertEqual(code["canonical_field_name"], "security_code")
         self.assertEqual(name["canonical_field_name"], "security_name")
+        self.assertEqual(
+            memberships["canonical_field_name"],
+            "market_memberships",
+        )
+        self.assertEqual(listing_date["canonical_field_name"], "listing_date")
+        self.assertEqual(listing_status["canonical_field_name"], "listing_status")
         self.assertEqual(code["mapping_status"], "mapped")
         self.assertEqual(name["mapping_status"], "mapped")
+
+    def test_maps_observed_ohlcv_and_turnover_fields(self) -> None:
+        expected = {
+            "开盘价:不复权[20260807]": ("open", "CNY", "unadjusted"),
+            "最高价:不复权[20260807]": ("high", "CNY", "unadjusted"),
+            "最低价:不复权[20260807]": ("low", "CNY", "unadjusted"),
+            "成交量[20260807]": ("volume", "shares", None),
+            "成交额[20260807]": ("turnover", "CNY", None),
+        }
+
+        for raw_field_name, expectation in expected.items():
+            with self.subTest(raw_field_name=raw_field_name):
+                result = self.parse(raw_field_name)
+                self.assertEqual(result["canonical_field_name"], expectation[0])
+                self.assertEqual(result["unit"], expectation[1])
+                self.assertEqual(result["adjustment_type"], expectation[2])
+                self.assertEqual(result["as_of_date"], "2026-08-07")
 
     def test_parses_quarterly_report_period(self) -> None:
         result = self.parse("归母净利润[2026一季报]")

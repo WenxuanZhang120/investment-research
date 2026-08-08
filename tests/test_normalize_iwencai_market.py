@@ -11,6 +11,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.normalize_iwencai_market import (  # noqa: E402
     NormalizationError,
+    build_normalized_batch,
     build_normalized_tables,
     normalize_snapshot,
 )
@@ -167,6 +168,8 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
         valuation = built["tables"]["valuation_snapshots"][0]
         self.assertEqual(security["security_code"], "000001.SZ")
         self.assertEqual(security["observed_date"], "2026-08-08")
+        self.assertEqual(security["exchange"], "SZ")
+        self.assertEqual(security["market_memberships"], ["a股"])
         self.assertEqual(market_bar["trade_date"], "2026-08-07")
         self.assertEqual(market_bar["adjustment_type"], "unadjusted")
         self.assertEqual(market_bar["currency"], "CNY")
@@ -187,7 +190,8 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
 
         self.assertEqual(destination.name, "test-record-id")
         manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["normalizer_version"], "1.0.0")
+        self.assertEqual(manifest["normalizer_version"], "2.0.0")
+        self.assertEqual(manifest["bundle_schema_version"], 2)
         self.assertEqual(manifest["tables"]["security_master"]["record_count"], 2)
         self.assertTrue((destination / "security_master.jsonl").is_file())
         self.assertTrue((destination / "market_bars_daily.jsonl").is_file())
@@ -224,7 +228,7 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
         ]["datas"][0]["总市值[20260807]"]
         self.write_snapshot(self.payload)
 
-        with self.assertRaisesRegex(NormalizationError, "总市值"):
+        with self.assertRaisesRegex(NormalizationError, "incomplete valuation"):
             build_normalized_tables(self.snapshot)
 
     def test_real_snapshot_produces_fifty_records_per_table(self) -> None:
@@ -242,7 +246,46 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
             built["tables"]["market_bars_daily"][0]["security_code"],
             "002731.SZ",
         )
-        self.assertEqual(len(built["unmapped_fields"]), 13)
+        self.assertEqual(len(built["unmapped_fields"]), 10)
+
+    def test_full_market_batch_has_complete_unique_security_scope(self) -> None:
+        raw_root = REPOSITORY_ROOT / "data/raw/iwencai/2026/08/08"
+        snapshots = []
+        for path in raw_root.glob("*.json"):
+            document = json.loads(path.read_text(encoding="utf-8"))
+            if "2026年8月7日全部A股" in document["metadata"]["query"]:
+                snapshots.append(path)
+
+        built = build_normalized_batch(snapshots)
+
+        self.assertEqual(built["coverage"]["source_snapshot_count"], 56)
+        self.assertEqual(built["coverage"]["reported_total_count"], 5543)
+        self.assertEqual(
+            {name: len(records) for name, records in built["tables"].items()},
+            {
+                "security_master": 5543,
+                "market_bars_daily": 5539,
+                "valuation_snapshots": 5539,
+            },
+        )
+        codes = [
+            record["security_code"]
+            for record in built["tables"]["security_master"]
+        ]
+        self.assertEqual(len(codes), len(set(codes)))
+        market_bars = {
+            record["security_code"]: record
+            for record in built["tables"]["market_bars_daily"]
+        }
+        self.assertIsNone(market_bars["000838.SZ"]["volume"])
+        self.assertIsNone(market_bars["000838.SZ"]["turnover"])
+        unlisted = next(
+            record
+            for record in built["tables"]["security_master"]
+            if record["security_code"] == "920059.BJ"
+        )
+        self.assertEqual(unlisted["listing_status"], "已发行未上市")
+        self.assertIsNone(unlisted["listing_date"])
 
 
 if __name__ == "__main__":
