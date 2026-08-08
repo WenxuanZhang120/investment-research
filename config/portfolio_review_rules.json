@@ -1,0 +1,13 @@
+{
+  "review_version": "1.0.0",
+  "target_weight_tolerance": 0.01,
+  "categories": ["ADD_candidate", "HOLD", "TRIM_candidate", "EXIT_candidate", "REVIEW"],
+  "precedence": [
+    "broken_thesis_to_exit",
+    "material_risk_to_trim",
+    "underweight_attractive_intact_to_add",
+    "overweight_expensive_to_trim",
+    "intact_stable_to_hold",
+    "otherwise_review"
+  ]
+}

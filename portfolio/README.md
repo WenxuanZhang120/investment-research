@@ -25,6 +25,17 @@ python3 scripts/validate_portfolio.py \
 
 验证器只输出文件、行号和字段错误，不回显持仓数量、成本或交易内容。它检查表头、必填字段、日期、数值范围、交易类型、投资卡字段和目标权重范围，不计算收益，也不作投资判断。
 
+投资卡还要求投资者明确维护 `thesis_status`、`valuation_status` 和 `risk_status`。持仓复核工具只把这些人工状态与实际/目标权重组合成候选类别：
+
+```bash
+python3 scripts/classify_portfolio_review.py \
+  --holdings portfolio/private/holdings.csv \
+  --cards portfolio/private/investment_cards \
+  --output portfolio/private/review.json
+```
+
+thesis 已破坏优先进入 `EXIT_candidate`，重大风险进入 `TRIM_candidate`；低于目标权重且 thesis 完整、估值有吸引力时才进入 `ADD_candidate`。信息不充分一律进入 `REVIEW`。这些仍是复核候选，不是自动交易指令。
+
 ## 字段边界
 
 - `quantity`、`average_cost` 和 `market_value` 必须为非负数；

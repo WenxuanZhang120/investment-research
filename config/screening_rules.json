@@ -1,0 +1,22 @@
+{
+  "screening_version": "1.0.0",
+  "purpose": "research_priority_only",
+  "cross_industry_preliminary": true,
+  "eligibility": {
+    "required_metrics": ["net_profit_margin", "operating_cash_flow_margin"],
+    "require_positive_pe_ttm": true,
+    "require_positive_market_cap": true
+  },
+  "components": [
+    {"field": "net_profit_margin", "direction": "higher", "weight": 0.30},
+    {"field": "operating_cash_flow_margin", "direction": "higher", "weight": 0.30},
+    {"field": "pe_ttm", "direction": "lower", "weight": 0.25},
+    {"field": "market_cap", "direction": "higher", "weight": 0.15}
+  ],
+  "priority_percentiles": {
+    "P0": 0.99,
+    "P1": 0.90,
+    "P2": 0.00
+  },
+  "reject_scope": "Reject means excluded from this preliminary screen because required inputs are missing or ineligible; it is not an investment conclusion."
+}
