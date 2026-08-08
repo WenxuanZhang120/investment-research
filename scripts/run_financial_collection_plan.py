@@ -221,7 +221,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         destination = normalize_job(plan, args.job, raw_root=args.raw_root)
         print(destination)
         return 0
-    except (OSError, TypeError, ValueError) as error:
+    except (OSError, RuntimeError, TypeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
 

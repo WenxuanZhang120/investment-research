@@ -1,9 +1,12 @@
+import io
 import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +17,7 @@ from scripts.run_financial_collection_plan import (  # noqa: E402
     inspect_job,
     inspect_plan,
     load_plan,
+    main,
 )
 from scripts.save_raw_response import save_raw_response  # noqa: E402
 
@@ -92,6 +96,29 @@ class RunFinancialCollectionPlanTests(unittest.TestCase):
         self.assertEqual(len(plan["jobs"]), 5)
         ids = {job["job_id"] for job in plan["jobs"]}
         self.assertIn("2026q1_base_resume", ids)
+
+    def test_cli_reports_runtime_error_without_traceback(self):
+        plan_path = self.root.parent / "plan.json"
+        plan_path.write_text(json.dumps(self.plan), encoding="utf-8")
+        stderr = io.StringIO()
+        with patch(
+            "scripts.run_financial_collection_plan.collect_job",
+            side_effect=RuntimeError("quota unavailable"),
+        ), redirect_stderr(stderr):
+            return_code = main(
+                [
+                    "--plan",
+                    str(plan_path),
+                    "--raw-root",
+                    str(self.root),
+                    "collect",
+                    "--job",
+                    "test_job",
+                ]
+            )
+        self.assertEqual(return_code, 1)
+        self.assertEqual(stderr.getvalue(), "error: quota unavailable\n")
+        self.assertNotIn("Traceback", stderr.getvalue())
 
 
 if __name__ == "__main__":
