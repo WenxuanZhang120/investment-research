@@ -103,6 +103,25 @@ class ParseIwencaiFieldsTests(unittest.TestCase):
         self.assertEqual(result["period_end"], "2025-12-31")
         self.assertEqual(result["report_type"], "2025FY")
 
+    def test_financial_compact_date_is_a_report_period(self) -> None:
+        result = self.parse("营业收入[20251231]")
+
+        self.assertEqual(result["canonical_field_name"], "revenue")
+        self.assertEqual(result["context_type"], "financial_period_date")
+        self.assertIsNone(result["as_of_date"])
+        self.assertEqual(result["period_end"], "2025-12-31")
+        self.assertEqual(result["report_type"], "2025FY")
+        self.assertEqual(result["statement_type"], "income_statement")
+        self.assertEqual(result["value_nature"], "duration_ytd")
+        self.assertEqual(result["unit"], "CNY")
+
+    def test_financial_metadata_uses_the_report_period_context(self) -> None:
+        result = self.parse("公告日期[20260331]")
+
+        self.assertEqual(result["canonical_field_name"], "filing_date")
+        self.assertEqual(result["period_end"], "2026-03-31")
+        self.assertEqual(result["report_type"], "2026Q1")
+
     def test_preserves_unknown_field_without_guessing_mapping(self) -> None:
         result = self.parse("未知指标[20260807]")
 

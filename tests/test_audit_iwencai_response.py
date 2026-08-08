@@ -114,6 +114,41 @@ class AuditIwencaiResponseTests(unittest.TestCase):
         self.assertEqual(report["summary"]["column_count"], 3)
         self.assertEqual(report["summary"]["reported_total_count"], 100)
 
+    def test_audits_direct_openapi_response_shape(self) -> None:
+        document = json.loads(self.snapshot_path.read_text(encoding="utf-8"))
+        document["payload"] = {
+            "code_count": 1,
+            "page": 1,
+            "limit": 10,
+            "datas": [
+                {
+                    "股票代码": "600519.SH",
+                    "股票简称": "贵州茅台",
+                    "公告日期[20251231]": "20260417",
+                    "报告期[20251231]": "2025年年报",
+                    "营业收入[20251231]": 168838102514.79,
+                }
+            ],
+        }
+        self.snapshot_path.write_text(
+            json.dumps(document, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        report = audit_snapshot(self.snapshot_path)
+
+        self.assertEqual(report["summary"]["table_component_count"], 1)
+        self.assertEqual(report["summary"]["column_count"], 5)
+        self.assertEqual(report["summary"]["mapped_column_count"], 5)
+        self.assertEqual(report["summary"]["returned_row_count"], 1)
+        revenue = next(
+            column
+            for column in report["columns"]
+            if column["canonical_field_name"] == "revenue"
+        )
+        self.assertEqual(revenue["period_end"], "2025-12-31")
+        self.assertEqual(revenue["source_role"], "iwencai_openapi")
+
 
 if __name__ == "__main__":
     unittest.main()
