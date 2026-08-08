@@ -1,0 +1,41 @@
+{
+  "metric_definition_version": "1.0.0",
+  "value_unit": "ratio",
+  "metrics": [
+    {
+      "metric_name": "net_profit_margin",
+      "numerator": "net_income_parent",
+      "denominator": "revenue",
+      "denominator_rule": "nonzero",
+      "description": "归母净利润除以营业收入，不进行年化"
+    },
+    {
+      "metric_name": "operating_profit_margin",
+      "numerator": "operating_profit",
+      "denominator": "revenue",
+      "denominator_rule": "nonzero",
+      "description": "营业利润除以营业收入，不进行年化"
+    },
+    {
+      "metric_name": "liability_to_assets",
+      "numerator": "total_liabilities",
+      "denominator": "total_assets",
+      "denominator_rule": "positive",
+      "description": "期末负债合计除以期末资产总计"
+    },
+    {
+      "metric_name": "operating_cash_to_net_income",
+      "numerator": "net_cash_flow_operating",
+      "denominator": "net_income_parent",
+      "denominator_rule": "nonzero",
+      "description": "经营活动现金流量净额除以归母净利润"
+    },
+    {
+      "metric_name": "operating_cash_flow_margin",
+      "numerator": "net_cash_flow_operating",
+      "denominator": "revenue",
+      "denominator_rule": "nonzero",
+      "description": "经营活动现金流量净额除以营业收入"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "mapping_version": "3.0.0",
+  "mapping_version": "3.1.0",
   "fields": [
     {
       "canonical_field_name": "security_code",
@@ -155,6 +155,14 @@
       "value_nature": "instant",
       "unit": "CNY",
       "raw_base_fields": ["归母权益", "归属于母公司所有者权益合计"]
+    },
+    {
+      "canonical_field_name": "total_equity",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["所有者权益"]
     },
     {
       "canonical_field_name": "monetary_funds",

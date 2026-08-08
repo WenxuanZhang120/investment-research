@@ -22,10 +22,12 @@ data/normalized/runs/<source>/<YYYY>/<MM>/<DD>/<bundle_id>/
 data/normalized/runs/<source>/<YYYY>/<MM>/<DD>/<bundle_id>/
 ├── manifest.json
 ├── financial_reports.jsonl
-└── financial_facts.jsonl
+├── financial_facts_<period>_balance_sheet.jsonl
+├── financial_facts_<period>_cash_flow_statement.jsonl
+└── financial_facts_<period>_income_statement.jsonl
 ```
 
-财务批次 ID 由有序原始记录 ID、映射版本和标准化器版本确定。不同抓取时点的数据不会覆盖，能够保留后来修订或重新披露的版本。
+财务批次 ID 由有序原始记录 ID、映射版本和标准化器版本确定。不同抓取时点的数据不会覆盖，能够保留后来修订或重新披露的版本。清单中的逻辑表列出按报告期和报表类型划分的物理分区及各自 SHA-256；分区只解决文件大小和审计问题，不改变长表主键或语义。
 
 ## 当前三张核心表
 
@@ -73,7 +75,7 @@ security_code + period_end + raw_record_id
 
 记录包括报告类型、来源报告期标签、公告日期和 `available_from`。当前 `available_from` 等于来源返回的公告日期，且标准化器拒绝公告日在报告期结束日前或抓取时间后的记录。这是后续时点分析避免未来信息的基础。
 
-### `financial_facts.jsonl`
+### `financial_facts_<period>_<statement_type>.jsonl`
 
 每行只保存一个财务事实，采用长表结构。主键为：
 
@@ -113,8 +115,9 @@ python3 scripts/normalize_iwencai_market.py \
 
 ```bash
 python3 scripts/normalize_iwencai_financials.py \
-  <annual-report-snapshot.json> \
-  <quarterly-report-snapshot.json>
+  <page-001-snapshot.json> \
+  <page-002-snapshot.json> \
+  ...
 ```
 
-财务转换器同样只读取本地原始快照，不调用 iWencai，也不计算增长率、利润率、ROE、ROIC、自由现金流或投资评分。
+财务转换器同样只读取本地原始快照，不调用 iWencai，也不计算增长率、利润率、ROE、ROIC、自由现金流或投资评分。分页问句必须页码完整、总数一致且证券代码无重复；缺页批次会被拒绝。
