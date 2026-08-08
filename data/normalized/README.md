@@ -110,6 +110,18 @@ python3 scripts/normalize_iwencai_announcements.py \
   <saved-announcement-snapshot.json>
 ```
 
+## 财经新闻表
+
+`news_items.jsonl` 保存新闻标题、摘要、URL、实际媒体、发布时间、可得时间、事件关键词分类和完整原始条目。真实响应表明媒体名称位于 `extra.real_publish_source` 或 `extra.publish_source`；`source_original` 可能是长篇正文，不能误映射为媒体。
+
+新闻只是待核查信息，不等于公司事实。日报明确要求回到原始媒体和公司公告交叉验证：
+
+```bash
+python3 scripts/normalize_iwencai_news.py <saved-news-snapshot.json>
+python3 scripts/generate_daily_news_report.py <news-manifest.json> \
+  --date YYYY-MM-DD --output reports/daily/<date>-financial-news.md
+```
+
 ## 生成命令
 
 ```bash

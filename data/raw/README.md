@@ -78,6 +78,16 @@ IWENCAI_API_KEY=... python3 scripts/collect_iwencai_financials.py \
 
 网络错误、HTTP 429 和服务端错误最多重试两次；HTTP 401/403 等凭据、权限或配额错误不会重试，避免无意义消耗调用。错误恢复后应使用 `--start-page` 从缺失页继续。
 
+高级财务数据使用版本化运行计划：
+
+```bash
+python3 scripts/run_financial_collection_plan.py status
+python3 scripts/run_financial_collection_plan.py collect --job 2026q1_base_resume
+python3 scripts/run_financial_collection_plan.py normalize --job 2026q1_base_resume
+```
+
+`status --require-complete` 可作为门禁。运行器拒绝存在重复页、不连续页、总数变化或页大小变化的任务；遇到额度中断时，下次 `collect` 自动从连续尾页之后恢复。
+
 公告搜索同样从环境变量读取凭据，并把网关 JSON 响应完整保存在快照 `payload` 内：
 
 ```bash
@@ -86,6 +96,15 @@ IWENCAI_API_KEY=... python3 scripts/collect_iwencai_announcements.py \
 ```
 
 公告采集器不筛选、不改写响应字段；成功状态和 `data` 结构的校验发生在快照保存之后。
+
+财经新闻使用相同的 raw-first 边界，但网关频道固定为 `news`：
+
+```bash
+IWENCAI_API_KEY=... python3 scripts/collect_iwencai_news.py \
+  "A股 最近七日 重要公司新闻" --size 10
+```
+
+新闻网关响应同样完整保存在 `payload`；正文、来源元数据和搜索相关性字段不会在 raw 层删除。
 
 ## 当前边界
 
