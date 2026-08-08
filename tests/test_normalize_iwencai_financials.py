@@ -96,23 +96,26 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
     def test_two_period_batch_preserves_point_in_time_versions(self) -> None:
         built = build_financial_batch([ANNUAL_SNAPSHOT, Q1_SNAPSHOT])
 
+        coverage = built["coverage"]
+        self.assertEqual(coverage["source_snapshot_count"], 2)
+        self.assertEqual(coverage["query_count"], 2)
+        self.assertEqual(coverage["security_count"], 3)
+        self.assertEqual(coverage["period_ends"], ["2025-12-31", "2026-03-31"])
+        self.assertEqual(coverage["report_types"], ["2025FY", "2026Q1"])
+        self.assertEqual(coverage["financial_report_count"], 6)
+        self.assertEqual(coverage["financial_fact_count"], 90)
+        self.assertEqual(coverage["present_fact_count"], 84)
+        self.assertEqual(coverage["missing_fact_count"], 6)
         self.assertEqual(
-            built["coverage"],
+            coverage["fact_count_by_statement"],
             {
-                "source_snapshot_count": 2,
-                "security_count": 3,
-                "period_ends": ["2025-12-31", "2026-03-31"],
-                "report_types": ["2025FY", "2026Q1"],
-                "financial_report_count": 6,
-                "financial_fact_count": 90,
-                "present_fact_count": 84,
-                "missing_fact_count": 6,
-                "fact_count_by_statement": {
-                    "income_statement": 30,
-                    "balance_sheet": 36,
-                    "cash_flow_statement": 24,
-                },
+                "income_statement": 30,
+                "balance_sheet": 36,
+                "cash_flow_statement": 24,
             },
+        )
+        self.assertTrue(
+            all(item["page_count"] == 1 for item in coverage["query_coverage"])
         )
         fact_keys = [
             (
@@ -125,6 +128,45 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
         ]
         self.assertEqual(len(fact_keys), len(set(fact_keys)))
 
+    def test_combines_complete_paginated_financial_query(self) -> None:
+        original = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        rows = original["payload"]["datas"]
+        snapshots = []
+        for page, page_rows in ((1, rows[:2]), (2, rows[2:])):
+            document = json.loads(json.dumps(original, ensure_ascii=False))
+            document["payload"]["datas"] = page_rows
+            document["payload"]["page"] = str(page)
+            document["payload"]["limit"] = "2"
+            document["payload"]["code_count"] = 3
+            document["payload"]["returned_count"] = len(page_rows)
+            document["payload"]["has_more"] = page == 1
+            document["metadata"]["record_id"] = f"page-{page}"
+            document["metadata"]["fetched_at"] = (
+                f"2026-08-08T20:00:0{page}+08:00"
+            )
+            document["metadata"]["payload_sha256"] = hashlib.sha256(
+                canonical_payload(document["payload"])
+            ).hexdigest()
+            snapshot = self.root / f"page-{page}.json"
+            snapshot.write_text(
+                json.dumps(document, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            snapshots.append(snapshot)
+
+        built = build_financial_batch(snapshots)
+
+        self.assertEqual(len(built["tables"]["financial_reports"]), 3)
+        self.assertEqual(len(built["tables"]["financial_facts"]), 45)
+        self.assertEqual(built["coverage"]["query_count"], 1)
+        self.assertEqual(
+            built["coverage"]["query_coverage"][0]["page_count"],
+            2,
+        )
+
+        with self.assertRaisesRegex(FinancialNormalizationError, "incomplete"):
+            build_financial_batch([snapshots[0]])
+
     def test_writes_atomic_bundle_and_refuses_overwrite(self) -> None:
         destination = normalize_financial_snapshots(
             [ANNUAL_SNAPSHOT, Q1_SNAPSHOT],
@@ -134,8 +176,9 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
         manifest = json.loads(
             (destination / "manifest.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(manifest["normalizer_version"], "1.0.0")
-        self.assertEqual(manifest["mapping_version"], "3.0.0")
+        self.assertEqual(manifest["normalizer_version"], "1.2.0")
+        self.assertEqual(manifest["bundle_schema_version"], 2)
+        self.assertEqual(manifest["mapping_version"], "3.1.0")
         self.assertEqual(
             manifest["tables"]["financial_reports"]["record_count"],
             6,
@@ -144,6 +187,11 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
             manifest["tables"]["financial_facts"]["record_count"],
             90,
         )
+        self.assertEqual(
+            len(manifest["tables"]["financial_facts"]["partitions"]),
+            6,
+        )
+        self.assertFalse((destination / "financial_facts.jsonl").exists())
 
         with self.assertRaises(FileExistsError):
             normalize_financial_snapshots(

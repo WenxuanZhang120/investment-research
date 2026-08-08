@@ -122,6 +122,17 @@ class ParseIwencaiFieldsTests(unittest.TestCase):
         self.assertEqual(result["period_end"], "2026-03-31")
         self.assertEqual(result["report_type"], "2026Q1")
 
+    def test_total_equity_remains_distinct_from_parent_equity(self) -> None:
+        total = self.parse("所有者权益[20251231]")
+        parent = self.parse("归母权益[20251231]")
+
+        self.assertEqual(total["canonical_field_name"], "total_equity")
+        self.assertEqual(parent["canonical_field_name"], "equity_parent")
+        self.assertNotEqual(
+            total["canonical_field_name"],
+            parent["canonical_field_name"],
+        )
+
     def test_preserves_unknown_field_without_guessing_mapping(self) -> None:
         result = self.parse("未知指标[20260807]")
 

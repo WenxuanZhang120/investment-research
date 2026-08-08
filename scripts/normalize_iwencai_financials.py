@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -28,9 +29,9 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
 )
 
 
-NORMALIZER_VERSION = "1.0.0"
+NORMALIZER_VERSION = "1.2.0"
 RECORD_SCHEMA_VERSION = 1
-BUNDLE_SCHEMA_VERSION = 1
+BUNDLE_SCHEMA_VERSION = 2
 DEFAULT_NORMALIZED_ROOT = REPOSITORY_ROOT / "data" / "normalized"
 PROJECT_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
 SECURITY_CODE_PATTERN = re.compile(r"^\d{6}\.(?:SH|SZ|BJ)$")
@@ -290,6 +291,18 @@ def _parse_compact_date(value: Any, field_name: str) -> str:
         ) from error
 
 
+def _optional_positive_int(value: Any, field_name: str) -> Optional[int]:
+    if value in (None, ""):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as error:
+        raise FinancialNormalizationError(f"{field_name} must be an integer") from error
+    if parsed < 1:
+        raise FinancialNormalizationError(f"{field_name} must be positive")
+    return parsed
+
+
 def _parse_report_label(value: Any) -> Tuple[str, str, str]:
     label = _required_text(value, "report_period_label")
     match = REPORT_LABEL_PATTERN.fullmatch(label)
@@ -442,14 +455,15 @@ def build_financial_tables(
             "financial table must contain at least one row"
         )
     reported_total = payload.get("code_count")
-    if isinstance(reported_total, int) and reported_total != len(rows):
+    if not isinstance(reported_total, int) or reported_total < len(rows):
         raise FinancialNormalizationError(
-            "financial snapshot is incomplete; returned rows do not match code_count"
+            "financial snapshot must report a valid code_count"
         )
-    if payload.get("has_more") is True:
-        raise FinancialNormalizationError(
-            "financial snapshot has more pages and cannot be normalized alone"
-        )
+    page = _optional_positive_int(payload.get("page"), "page")
+    limit = _optional_positive_int(payload.get("limit"), "limit")
+    has_more = payload.get("has_more")
+    if has_more not in (True, False, None):
+        raise FinancialNormalizationError("has_more must be boolean when present")
 
     fetched_at = _parse_timestamp(metadata["fetched_at"])
     common_context = _record_context(metadata, snapshot_path, mapping_version)
@@ -590,6 +604,9 @@ def build_financial_tables(
         "period_ends": period_ends,
         "reported_total_count": reported_total,
         "returned_row_count": len(rows),
+        "page": page,
+        "limit": limit,
+        "has_more": has_more,
     }
 
 
@@ -598,6 +615,105 @@ def _bundle_id(raw_record_ids: Sequence[str], mapping_version: str) -> str:
         [NORMALIZER_VERSION, mapping_version, *raw_record_ids]
     ).encode("utf-8")
     return hashlib.sha256(identity).hexdigest()[:20]
+
+
+def _harmonize_query_group_schema(
+    group_parts: Sequence[Dict[str, Any]],
+) -> None:
+    """Fill page-omitted fields from the query-wide mapped schema as null facts."""
+    templates: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for part in group_parts:
+        for fact in part["tables"]["financial_facts"]:
+            key = (fact["period_end"], fact["canonical_field_name"])
+            templates.setdefault(key, fact)
+
+    context_fields = (
+        "record_schema_version",
+        "source",
+        "fetched_at",
+        "raw_record_id",
+        "raw_snapshot",
+        "normalizer_version",
+        "mapping_version",
+        "security_code",
+        "security_name",
+        "period_end",
+        "report_type",
+        "report_period_label",
+        "filing_date",
+        "available_from",
+    )
+    for part in group_parts:
+        facts = part["tables"]["financial_facts"]
+        facts_by_report: Dict[Tuple[str, str, str], Dict[str, Dict[str, Any]]] = {}
+        for fact in facts:
+            report_key = (
+                fact["security_code"],
+                fact["period_end"],
+                fact["raw_record_id"],
+            )
+            facts_by_report.setdefault(report_key, {})[
+                fact["canonical_field_name"]
+            ] = fact
+
+        for report in part["tables"]["financial_reports"]:
+            report_key = (
+                report["security_code"],
+                report["period_end"],
+                report["raw_record_id"],
+            )
+            existing = facts_by_report.setdefault(report_key, {})
+            period_templates = {
+                canonical_name: template
+                for (period_end, canonical_name), template in templates.items()
+                if period_end == report["period_end"]
+            }
+            for canonical_name, template in period_templates.items():
+                if canonical_name in existing:
+                    continue
+                expected_lineage = copy.deepcopy(
+                    template["field_lineage"][canonical_name]
+                )
+                expected_lineage.update(
+                    {
+                        "source_index_name": None,
+                        "source_role": "query_batch_expected_field",
+                        "source_type": None,
+                        "source_unit": None,
+                        "source_timestamp": None,
+                        "value_status": "missing_in_source",
+                        "expected_from_query_batch": True,
+                    }
+                )
+                missing_fact = {
+                    **{field: report[field] for field in context_fields},
+                    "canonical_field_name": canonical_name,
+                    "statement_type": template["statement_type"],
+                    "value_nature": template["value_nature"],
+                    "value": None,
+                    "unit": template["unit"],
+                    "value_status": "missing_in_source",
+                    "field_lineage": {
+                        "security_code": copy.deepcopy(
+                            report["field_lineage"]["security_code"]
+                        ),
+                        "security_name": copy.deepcopy(
+                            report["field_lineage"]["security_name"]
+                        ),
+                        canonical_name: expected_lineage,
+                    },
+                }
+                facts.append(missing_fact)
+                existing[canonical_name] = missing_fact
+
+            report_facts = list(existing.values())
+            report["fact_count"] = len(report_facts)
+            report["present_fact_count"] = sum(
+                fact["value_status"] == "present" for fact in report_facts
+            )
+            report["missing_fact_count"] = (
+                report["fact_count"] - report["present_fact_count"]
+            )
 
 
 def build_financial_batch(
@@ -623,6 +739,69 @@ def build_financial_batch(
             "batch snapshots must share one mapping version"
         )
 
+    query_groups: Dict[Tuple[str, Tuple[str, ...]], List[Dict[str, Any]]] = {}
+    for part in parts:
+        query = part["metadata"].get("query")
+        if not isinstance(query, str) or not query:
+            raise FinancialNormalizationError("every snapshot must preserve its query")
+        group_key = (query, tuple(part["period_ends"]))
+        query_groups.setdefault(group_key, []).append(part)
+
+    query_coverage = []
+    for (query, period_tuple), group_parts in query_groups.items():
+        pages = [part["page"] for part in group_parts]
+        limits = {part["limit"] for part in group_parts}
+        totals = {part["reported_total_count"] for part in group_parts}
+        if any(page is None for page in pages) or None in limits:
+            if len(group_parts) != 1:
+                raise FinancialNormalizationError(
+                    "multi-page financial queries require page and limit metadata"
+                )
+        if len(limits) != 1 or len(totals) != 1:
+            raise FinancialNormalizationError(
+                "financial query pages must share limit and code_count"
+            )
+        limit = next(iter(limits))
+        total = next(iter(totals))
+        expected_page_count = max(1, math.ceil(total / limit))
+        ordered_parts = sorted(group_parts, key=lambda part: part["page"] or 1)
+        ordered_pages = [part["page"] or 1 for part in ordered_parts]
+        if ordered_pages != list(range(1, expected_page_count + 1)):
+            raise FinancialNormalizationError(
+                f"financial query pages are incomplete: {ordered_pages}"
+            )
+        returned_count = sum(part["returned_row_count"] for part in ordered_parts)
+        if returned_count != total:
+            raise FinancialNormalizationError(
+                f"financial query expected {total} rows, found {returned_count}"
+            )
+        for index, part in enumerate(ordered_parts):
+            expected_has_more = index < len(ordered_parts) - 1
+            if part["has_more"] is not None and part["has_more"] != expected_has_more:
+                raise FinancialNormalizationError(
+                    f"financial query has inconsistent has_more on page {part['page']}"
+                )
+
+        _harmonize_query_group_schema(ordered_parts)
+        report_keys = [
+            (report["security_code"], report["period_end"])
+            for part in ordered_parts
+            for report in part["tables"]["financial_reports"]
+        ]
+        if len(report_keys) != len(set(report_keys)):
+            raise FinancialNormalizationError(
+                "financial query contains duplicate security-period rows across pages"
+            )
+        query_coverage.append(
+            {
+                "query": query,
+                "period_ends": list(period_tuple),
+                "page_count": len(ordered_parts),
+                "reported_total_count": total,
+                "returned_row_count": returned_count,
+            }
+        )
+
     tables = {table_name: [] for table_name in TABLE_FILES}
     for part in parts:
         for table_name in TABLE_FILES:
@@ -643,6 +822,9 @@ def build_financial_batch(
             "period_ends": part["period_ends"],
             "reported_total_count": part["reported_total_count"],
             "returned_row_count": part["returned_row_count"],
+            "page": part["page"],
+            "limit": part["limit"],
+            "has_more": part["has_more"],
         }
         for part in parts
     ]
@@ -663,7 +845,7 @@ def build_financial_batch(
     return {
         "metadata": {
             "source": parts[0]["metadata"]["source"],
-            "queries": [record["query"] for record in raw_records],
+            "queries": list(dict.fromkeys(record["query"] for record in raw_records)),
             "fetched_at_start": min(timestamps).isoformat(timespec="microseconds"),
             "fetched_at_end": max(timestamps).isoformat(timespec="microseconds"),
             "record_id": _bundle_id(raw_record_ids, mapping_version),
@@ -676,6 +858,11 @@ def build_financial_batch(
         ),
         "coverage": {
             "source_snapshot_count": len(parts),
+            "query_count": len(query_groups),
+            "query_coverage": sorted(
+                query_coverage,
+                key=lambda item: (item["period_ends"], item["query"]),
+            ),
             "security_count": len({record["security_code"] for record in reports}),
             "period_ends": sorted({record["period_end"] for record in reports}),
             "report_types": sorted({record["report_type"] for record in reports}),
@@ -737,16 +924,42 @@ def write_financial_bundle(
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".normalizing-", dir=destination.parent))
     try:
-        table_manifest = {}
-        for table_name, filename in TABLE_FILES.items():
-            content = _jsonl_bytes(built["tables"][table_name])
-            _write_bytes(staging / filename, content)
-            table_manifest[table_name] = {
-                "file": filename,
-                "record_count": len(built["tables"][table_name]),
-                "primary_key": PRIMARY_KEYS[table_name],
-                "sha256": hashlib.sha256(content).hexdigest(),
+        report_content = _jsonl_bytes(built["tables"]["financial_reports"])
+        report_filename = TABLE_FILES["financial_reports"]
+        _write_bytes(staging / report_filename, report_content)
+        table_manifest = {
+            "financial_reports": {
+                "file": report_filename,
+                "record_count": len(built["tables"]["financial_reports"]),
+                "primary_key": PRIMARY_KEYS["financial_reports"],
+                "sha256": hashlib.sha256(report_content).hexdigest(),
             }
+        }
+
+        fact_groups: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
+        for fact in built["tables"]["financial_facts"]:
+            group_key = (fact["period_end"], fact["statement_type"])
+            fact_groups.setdefault(group_key, []).append(fact)
+        fact_partitions = []
+        for (period_end, statement_type), records in sorted(fact_groups.items()):
+            filename = f"financial_facts_{period_end}_{statement_type}.jsonl"
+            content = _jsonl_bytes(records)
+            _write_bytes(staging / filename, content)
+            fact_partitions.append(
+                {
+                    "file": filename,
+                    "period_end": period_end,
+                    "statement_type": statement_type,
+                    "record_count": len(records),
+                    "sha256": hashlib.sha256(content).hexdigest(),
+                }
+            )
+        table_manifest["financial_facts"] = {
+            "record_count": len(built["tables"]["financial_facts"]),
+            "primary_key": PRIMARY_KEYS["financial_facts"],
+            "partition_keys": ["period_end", "statement_type"],
+            "partitions": fact_partitions,
+        }
 
         manifest = {
             "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
