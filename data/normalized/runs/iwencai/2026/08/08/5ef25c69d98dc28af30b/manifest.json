@@ -1,0 +1,24 @@
+{
+  "bundle_schema_version": 1,
+  "bundle_id": "5ef25c69d98dc28af30b",
+  "normalizer_version": "1.1.0",
+  "taxonomy_version": "1.1.0",
+  "source": "iwencai",
+  "source_raw_record_id": "cf0031976e71132102a3",
+  "fetched_at": "2026-08-08T20:25:03.038133+08:00",
+  "coverage": {
+    "record_count": 2,
+    "event_types": [
+      "share_repurchase"
+    ]
+  },
+  "table": {
+    "logical_name": "events",
+    "file": "events.jsonl",
+    "primary_key": [
+      "event_id"
+    ],
+    "record_count": 2,
+    "sha256": "ad5569a1a7deb3c98e38e796f2088e1bbc40412a60dee36c3911c8397ecea19d"
+  }
+}

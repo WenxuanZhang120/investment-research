@@ -1,0 +1,15 @@
+{
+  "taxonomy_version": "1.1.0",
+  "default_event_type": "other_announcement",
+  "rules": [
+    {"event_type": "periodic_report", "keywords": ["年度报告", "半年度报告", "季度报告"]},
+    {"event_type": "earnings_forecast", "keywords": ["业绩预告", "业绩快报"]},
+    {"event_type": "dividend", "keywords": ["利润分配", "分红派息", "权益分派"]},
+    {"event_type": "share_repurchase", "keywords": ["股份回购", "回购股份", "回购"]},
+    {"event_type": "shareholder_change", "keywords": ["增持", "减持"]},
+    {"event_type": "restructuring", "keywords": ["重大资产重组", "发行股份购买资产"]},
+    {"event_type": "regulatory", "keywords": ["监管函", "问询函", "行政处罚"]},
+    {"event_type": "pledge", "keywords": ["股权质押", "股份质押"]},
+    {"event_type": "unlock", "keywords": ["限售股解禁", "限售股份上市流通"]}
+  ]
+}

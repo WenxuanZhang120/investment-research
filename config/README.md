@@ -69,3 +69,7 @@ python3 scripts/parse_iwencai_fields.py \
 ## `financial_metrics.json`
 
 保存派生财务比率的版本化公式、分子、分母和分母约束。当前仅包含可以从同一报告期直接计算且无需年化的五项比率。修改公式或口径必须提升 `metric_definition_version` 并增加测试；缺失输入、零分母或不符合正值约束时保留空值和原因状态，不得补零或静默删除。
+
+## `event_taxonomy.json`
+
+保存公告标题到事件类型的版本化关键词规则。分类只用于组织研究队列，不代表利好、利空或投资判断。规则按文件顺序匹配并保留实际命中的关键词；无法匹配的公告进入 `other_announcement`。规则变化必须提升 `taxonomy_version`。

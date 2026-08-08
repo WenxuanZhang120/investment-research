@@ -76,6 +76,15 @@ IWENCAI_API_KEY=... python3 scripts/collect_iwencai_financials.py \
 
 续采命令只校验本次页段；完整性由标准化器对同一问句的全部快照统一检查。只有页码从 1 连续到最后一页、总行数和证券代码唯一性均通过时，才会产生标准化批次。
 
+公告搜索同样从环境变量读取凭据，并把网关 JSON 响应完整保存在快照 `payload` 内：
+
+```bash
+IWENCAI_API_KEY=... python3 scripts/collect_iwencai_announcements.py \
+  "A股 最近七日 股份回购公告" --size 10
+```
+
+公告采集器不筛选、不改写响应字段；成功状态和 `data` 结构的校验发生在快照保存之后。
+
 ## 当前边界
 
 - 已保存经公开查询或受控 OpenAPI 查询取得的 iWencai 原始响应；API 密钥、授权头和 Cookie 不进入快照或仓库。

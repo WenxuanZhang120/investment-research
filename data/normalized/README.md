@@ -99,6 +99,17 @@ security_code + period_end + canonical_field_name + raw_record_id
 
 未映射字段只记录在批次清单的 `unmapped_fields` 中，其原始值仍完整保存在 `data/raw/`，不会被猜测写入标准化表。
 
+## 公告事件表
+
+`events.jsonl` 每行表示一条公告事件，主键为来源、URL、发布时间和标题共同确定的 `event_id`。记录包括公告标题、摘要、URL、发布时间、`available_from`、事件分类、命中关键词、原始六位证券代码、来源查询和完整原始条目。
+
+同花顺问财公告搜索的 `stock_infos.code` 当前没有交易所后缀，因此保存在 `source_security_code`；`security_code` 保持为空，等待与证券主表确定性关联，不根据代码前缀猜测交易所。事件分类是可追溯的整理规则，不是投资判断。
+
+```bash
+python3 scripts/normalize_iwencai_announcements.py \
+  <saved-announcement-snapshot.json>
+```
+
 ## 生成命令
 
 ```bash
