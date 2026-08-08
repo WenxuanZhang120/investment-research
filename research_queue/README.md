@@ -10,3 +10,5 @@
 当前全市场规则是跨行业的初步模型，只使用 2025 年报利润率、经营现金流率、2026-08-07 的正市盈率和市值。银行等行业的报表口径与普通公司不同，因此排名会产生明显行业偏置。任何 P0/P1 都必须经过行业内比较、深度研究、估值情景和红队审查，不能直接触发交易。
 
 完整结果保存在 `data/derived/runs/screening/`，规则保存在 `config/screening_rules.json`。后续在行业数据可用后，应升级为行业内百分位；在增长和连续历史数据可用后，再加入增长质量与估值分位。
+
+选中证券后，从 `research_case.template.json` 复制研究档案。档案贯穿 queued、researching、red_team、portfolio_fit、decision_ready、decided、monitoring 和 reviewed 状态，并强制分开事实、推断和判断。

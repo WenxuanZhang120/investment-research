@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "research_statuses": ["queued", "researching", "red_team", "portfolio_fit", "decision_ready", "decided", "monitoring", "reviewed"],
+  "confidence_values": ["low", "medium", "high"],
+  "decision_actions": ["BUY", "ADD", "HOLD", "TRIM", "EXIT", "REJECT", "DEFER"],
+  "valuation_cases": ["bull", "base", "bear"],
+  "final_authority": "investor"
+}

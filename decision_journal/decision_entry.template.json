@@ -1,0 +1,23 @@
+{
+  "decision_id": "",
+  "research_id": "",
+  "security_code": "",
+  "decision_at": "",
+  "action": "DEFER",
+  "final_authority": "investor",
+  "facts_used": [],
+  "inferences_used": [],
+  "judgments_made": [],
+  "base_case": "",
+  "bear_case": "",
+  "bull_case": "",
+  "red_team_response": "",
+  "portfolio_fit": "",
+  "target_weight": null,
+  "execution_plan": [],
+  "thesis_breakers": [],
+  "monitoring_plan": [],
+  "reason_for_decision": "",
+  "known_uncertainties": [],
+  "private_execution_reference": null
+}
