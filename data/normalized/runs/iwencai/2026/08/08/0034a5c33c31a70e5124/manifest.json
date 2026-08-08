@@ -1,0 +1,91 @@
+{
+  "bundle_schema_version": 1,
+  "normalizer_version": "1.0.0",
+  "mapping_version": "3.0.0",
+  "bundle_id": "0034a5c33c31a70e5124",
+  "source": "iwencai",
+  "queries": [
+    "贵州茅台、宁德时代、招商银行2026年一季报的股票代码、股票简称、定期报告实际披露日期、营业收入、营业总收入、营业利润、利润总额、归属于母公司所有者的净利润、资产总计、负债合计、归属于母公司所有者权益合计、货币资金、应收账款、存货、经营活动产生的现金流量净额、投资活动产生的现金流量净额、筹资活动产生的现金流量净额、现金及现金等价物净增加额",
+    "贵州茅台、宁德时代、招商银行2025年年报的股票代码、股票简称、定期报告实际披露日期、营业收入、营业总收入、营业利润、利润总额、归属于母公司所有者的净利润、资产总计、负债合计、归属于母公司所有者权益合计、货币资金、应收账款、存货、经营活动产生的现金流量净额、投资活动产生的现金流量净额、筹资活动产生的现金流量净额、现金及现金等价物净增加额"
+  ],
+  "fetched_at_start": "2026-08-08T19:21:34.198330+08:00",
+  "fetched_at_end": "2026-08-08T19:21:38.676741+08:00",
+  "raw_records": [
+    {
+      "record_id": "12929e932cf14a7cda8b",
+      "payload_sha256": "455c96f6269e7edce3f107da0472b16f753a628e2c8b429ffc0b6a7737a5fb66",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T192134198330+0800_12929e932cf14a7cda8b.json",
+      "query": "贵州茅台、宁德时代、招商银行2026年一季报的股票代码、股票简称、定期报告实际披露日期、营业收入、营业总收入、营业利润、利润总额、归属于母公司所有者的净利润、资产总计、负债合计、归属于母公司所有者权益合计、货币资金、应收账款、存货、经营活动产生的现金流量净额、投资活动产生的现金流量净额、筹资活动产生的现金流量净额、现金及现金等价物净增加额",
+      "fetched_at": "2026-08-08T19:21:34.198330+08:00",
+      "period_ends": [
+        "2026-03-31"
+      ],
+      "reported_total_count": 3,
+      "returned_row_count": 3
+    },
+    {
+      "record_id": "e53d5eb6b4c8d9fd8b52",
+      "payload_sha256": "7c0291dc9e429a592dacdb32483c9b93b3ec1ec65aa287ce965a4c66ef5b2666",
+      "snapshot": "data/raw/iwencai/2026/08/08/20260808T192138676741+0800_e53d5eb6b4c8d9fd8b52.json",
+      "query": "贵州茅台、宁德时代、招商银行2025年年报的股票代码、股票简称、定期报告实际披露日期、营业收入、营业总收入、营业利润、利润总额、归属于母公司所有者的净利润、资产总计、负债合计、归属于母公司所有者权益合计、货币资金、应收账款、存货、经营活动产生的现金流量净额、投资活动产生的现金流量净额、筹资活动产生的现金流量净额、现金及现金等价物净增加额",
+      "fetched_at": "2026-08-08T19:21:38.676741+08:00",
+      "period_ends": [
+        "2025-12-31"
+      ],
+      "reported_total_count": 3,
+      "returned_row_count": 3
+    }
+  ],
+  "coverage": {
+    "source_snapshot_count": 2,
+    "security_count": 3,
+    "period_ends": [
+      "2025-12-31",
+      "2026-03-31"
+    ],
+    "report_types": [
+      "2025FY",
+      "2026Q1"
+    ],
+    "financial_report_count": 6,
+    "financial_fact_count": 90,
+    "present_fact_count": 84,
+    "missing_fact_count": 6,
+    "fact_count_by_statement": {
+      "income_statement": 30,
+      "balance_sheet": 36,
+      "cash_flow_statement": 24
+    }
+  },
+  "tables": {
+    "financial_reports": {
+      "file": "financial_reports.jsonl",
+      "record_count": 6,
+      "primary_key": [
+        "security_code",
+        "period_end",
+        "raw_record_id"
+      ],
+      "sha256": "75f49922c0705b613ff11eb55c04e6cb39fd7350e7936433bec4a6d6e5d65a33"
+    },
+    "financial_facts": {
+      "file": "financial_facts.jsonl",
+      "record_count": 90,
+      "primary_key": [
+        "security_code",
+        "period_end",
+        "canonical_field_name",
+        "raw_record_id"
+      ],
+      "sha256": "548f0a9a03be1c483ee8b6f71a47b0631ed367498412279fed764361033f3815"
+    }
+  },
+  "unmapped_fields": [
+    "归母净利润同比增长率[20251231]",
+    "归母净利润同比增长率[20260331]",
+    "最新价",
+    "最新涨跌幅",
+    "营业收入同比增长率[20251231]",
+    "营业收入同比增长率[20260331]"
+  ]
+}

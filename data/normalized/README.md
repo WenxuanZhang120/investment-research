@@ -16,6 +16,17 @@ data/normalized/runs/<source>/<YYYY>/<MM>/<DD>/<bundle_id>/
 
 只有包含 `manifest.json` 的完整目录才是可用批次。批次清单记录全部原始分页、页码、抓取时间、原始记录 ID、记录数和内容哈希。再次处理同一组原始记录会得到相同 `bundle_id` 并被拒绝，避免静默覆盖已有结果。
 
+财务响应允许把不同报告期的独立查询组合为一个批次：
+
+```text
+data/normalized/runs/<source>/<YYYY>/<MM>/<DD>/<bundle_id>/
+├── manifest.json
+├── financial_reports.jsonl
+└── financial_facts.jsonl
+```
+
+财务批次 ID 由有序原始记录 ID、映射版本和标准化器版本确定。不同抓取时点的数据不会覆盖，能够保留后来修订或重新披露的版本。
+
 ## 当前三张核心表
 
 ### `security_master.jsonl`
@@ -50,6 +61,30 @@ security_code + as_of_date
 
 当前包括总市值和滚动市盈率 `pe_ttm`。负市盈率按来源事实保留，不在标准化层解释或过滤。来源没有估值数据的未上市证券不生成估值记录。
 
+## 财务数据基础表
+
+### `financial_reports.jsonl`
+
+每行表示一个证券、一个报告期在一次原始抓取中观察到的报告版本。主键为：
+
+```text
+security_code + period_end + raw_record_id
+```
+
+记录包括报告类型、来源报告期标签、公告日期和 `available_from`。当前 `available_from` 等于来源返回的公告日期，且标准化器拒绝公告日在报告期结束日前或抓取时间后的记录。这是后续时点分析避免未来信息的基础。
+
+### `financial_facts.jsonl`
+
+每行只保存一个财务事实，采用长表结构。主键为：
+
+```text
+security_code + period_end + canonical_field_name + raw_record_id
+```
+
+`statement_type` 区分 `income_statement`、`balance_sheet` 和 `cash_flow_statement`。`value_nature` 区分期末时点值与年初至报告期末累计值。缺失项目仍生成事实记录，`value` 为 `null`、`value_status` 为 `missing_in_source`，不得补零。
+
+长表结构使新增 iWencai 动态财务字段时无需修改宽表列结构，也能让同一报告期的多个抓取或修订版本并存。
+
 ## 数据血缘
 
 每条记录保存：
@@ -73,3 +108,13 @@ python3 scripts/normalize_iwencai_market.py \
 ```
 
 多页批次必须具有相同来源、查询和字段映射，页码必须从 1 连续排列，证券主表总数必须等于来源报告的总记录数。转换器只读取已经保存的本地原始响应，不发起网络请求，也不生成衍生指标或投资判断。
+
+财务批次生成命令：
+
+```bash
+python3 scripts/normalize_iwencai_financials.py \
+  <annual-report-snapshot.json> \
+  <quarterly-report-snapshot.json>
+```
+
+财务转换器同样只读取本地原始快照，不调用 iWencai，也不计算增长率、利润率、ROE、ROIC、自由现金流或投资评分。
