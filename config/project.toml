@@ -1,0 +1,51 @@
+# 项目级基础配置。这里只保存长期稳定、非敏感的约定。
+schema_version = 1
+
+[project]
+name = "investment-research"
+timezone = "Asia/Shanghai"
+language = "zh-CN"
+encoding = "UTF-8"
+date_format = "YYYY-MM-DD"
+
+[paths]
+raw_data = "data/raw"
+normalized_data = "data/normalized"
+derived_data = "data/derived"
+portfolio = "portfolio"
+daily_reports = "reports/daily"
+weekly_reports = "reports/weekly"
+quarterly_reports = "reports/quarterly"
+research_queue = "research_queue"
+decision_journal = "decision_journal"
+scripts = "scripts"
+
+[data_policy]
+raw_data_immutable = true
+raw_write_mode = "append_only"
+preserve_original_field_names = true
+separate_collection_from_judgment = true
+support_point_in_time_analysis = true
+
+[lineage]
+raw_required_fields = [
+  "source",
+  "fetched_at",
+]
+normalized_required_fields = [
+  "source",
+  "fetched_at",
+  "raw_field_name",
+  "canonical_field_name",
+  "parser_version",
+]
+context_fields = [
+  "as_of_date",
+  "period_end",
+  "unit",
+  "adjustment_type",
+  "confidence",
+]
+
+[data_sources]
+primary = "iwencai"
