@@ -1,0 +1,37 @@
+# Privacy-only exclusions
+#
+# Market data, normalized data, derived data, research reports, and source code
+# are intentionally NOT ignored. Keep analysis-critical material versioned.
+
+# Environment files may contain credentials. Templates remain publishable.
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Authentication credentials and private keys.
+.netrc
+credentials.json
+secrets.json
+auth.json
+tokens.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+
+# Local/private configuration. Publish redacted examples separately.
+config/local.*
+config/private.*
+config/secrets.*
+config/credentials.*
+
+# Explicit privacy convention for personal inputs at any directory level.
+# Examples: portfolio/private/, decision_journal/private/, data/private/.
+private/
+**/private/
+*.private.*
