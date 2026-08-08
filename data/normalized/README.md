@@ -132,3 +132,5 @@ python3 scripts/normalize_iwencai_financials.py \
 ```
 
 财务转换器同样只读取本地原始快照，不调用 iWencai，也不计算增长率、利润率、ROE、ROIC、自由现金流或投资评分。分页问句必须页码完整、总数一致且证券代码无重复；缺页批次会被拒绝。
+
+所有标准化与派生清单引用的物理文件和 SHA-256 还会由 `scripts/validate_repository.py` 统一检查，并在 GitHub Actions 中自动执行。

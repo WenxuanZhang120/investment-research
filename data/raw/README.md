@@ -92,4 +92,6 @@ IWENCAI_API_KEY=... python3 scripts/collect_iwencai_announcements.py \
 - 已保存经公开查询或受控 OpenAPI 查询取得的 iWencai 原始响应；API 密钥、授权头和 Cookie 不进入快照或仓库。
 - 本地保存工具仍只负责存档；独立财务采集器负责受控网络请求，两者职责分离。
 - 字段审计同时支持网页表格响应和 OpenAPI 的 `datas` 响应，但不会修改原始 `payload`。
-- 当前没有自动定时采集、投资筛选或投资判断逻辑。
+- raw 存储与采集工具不包含投资筛选或投资判断逻辑；仓库当前也未配置自动定时采集。
+
+仓库级完整性检查可通过 `python3 scripts/validate_repository.py` 运行。它会验证所有 raw payload 哈希及对应查询日志，不修改任何数据。
