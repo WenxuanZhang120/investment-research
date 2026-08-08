@@ -1,0 +1,56 @@
+{
+  "bundle_schema_version": 1,
+  "normalizer_version": "1.0.0",
+  "mapping_version": "1.1.0",
+  "source": "iwencai",
+  "query": "2026年8月7日A股股票代码、股票简称、收盘价、总市值、市盈率(pe,ttm)，按股票代码排序，前10只",
+  "fetched_at": "2026-08-08T17:15:11.408147+08:00",
+  "raw_record_id": "004c42e90d64b30c62fc",
+  "raw_payload_sha256": "cb3f63aadee39cd74b5074d5ffc90155f7fd4693f15971517c4456a954d23857",
+  "raw_snapshot": "data/raw/iwencai/2026/08/08/20260808T171511408147+0800_004c42e90d64b30c62fc.json",
+  "tables": {
+    "security_master": {
+      "file": "security_master.jsonl",
+      "record_count": 50,
+      "primary_key": [
+        "security_code",
+        "observed_date"
+      ],
+      "sha256": "4ec597dc4ddf175b5af56bd79350a0aad99c72e4074239145fc3024549cfdbf7"
+    },
+    "market_bars_daily": {
+      "file": "market_bars_daily.jsonl",
+      "record_count": 50,
+      "primary_key": [
+        "security_code",
+        "trade_date",
+        "adjustment_type"
+      ],
+      "sha256": "3d0b6f8971558486a3a2a60220588a3bbe823431515c9a11c59fbb4bf653b81a"
+    },
+    "valuation_snapshots": {
+      "file": "valuation_snapshots.jsonl",
+      "record_count": 50,
+      "primary_key": [
+        "security_code",
+        "as_of_date"
+      ],
+      "sha256": "c174308f06ecda52d17402b56f420ccdc50bc7a69a8437f089dbe9a1760b9d3d"
+    }
+  },
+  "unmapped_fields": [
+    "a股市值(不含限售股)[20260807]",
+    "基本每股收益[20260331]",
+    "市盈率(pe)[20260807]",
+    "开盘价:不复权[20260807]",
+    "所属同花顺行业",
+    "最低价:不复权[20260807]",
+    "最新涨跌幅",
+    "最高价:不复权[20260807]",
+    "销售净利率[20260331]",
+    "销售毛利率[20260331]",
+    "预测市盈率(pe,最新预测)[20261231]",
+    "预测市盈率(pe,最新预测)[20271231]",
+    "预测市盈率(pe,最新预测)[20281231]"
+  ]
+}
