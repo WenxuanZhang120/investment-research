@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "holdings": {
     "columns": ["as_of_date", "security_code", "security_name", "quantity", "average_cost", "currency", "market_value", "target_weight", "notes"],
     "required": ["as_of_date", "security_code", "quantity", "average_cost", "currency"],
@@ -15,8 +15,11 @@
     "enum_fields": {"side": ["BUY", "SELL", "DIVIDEND", "SPLIT", "TRANSFER_IN", "TRANSFER_OUT"]}
   },
   "investment_card": {
-    "required": ["security_code", "updated_at", "status", "thesis", "why_now", "key_assumptions", "thesis_breakers", "catalysts", "risks", "valuation_framework", "target_weight", "source_links"],
+    "required": ["security_code", "updated_at", "status", "thesis_status", "valuation_status", "risk_status", "thesis", "why_now", "key_assumptions", "thesis_breakers", "catalysts", "risks", "valuation_framework", "target_weight", "source_links"],
     "status_values": ["active", "watchlist", "closed"],
+    "thesis_status_values": ["unknown", "intact", "uncertain", "broken"],
+    "valuation_status_values": ["unknown", "attractive", "fair", "expensive"],
+    "risk_status_values": ["unknown", "stable", "rising", "material"],
     "array_fields": ["key_assumptions", "thesis_breakers", "catalysts", "risks", "source_links"]
   }
 }

@@ -27,3 +27,15 @@ python3 scripts/derive_financial_metrics.py \
 ```
 
 计算器会先验证来源财务事实分区的 SHA-256。当前五项指标只做同报告期比率，不年化、不跨期推断、不计算评分，也不作投资判断。
+
+## 市场研究优先级
+
+`data/derived/runs/screening/` 保存行情估值和财务指标连接后的全市场研究队列。每条记录保留原始输入值、各分项百分位、总分、资格原因、排名和 P0/P1/P2/Reject。筛选器先验证来源文件哈希，并拒绝使用 `available_from` 晚于筛选日的财务指标。
+
+```bash
+python3 scripts/screen_market_research_queue.py \
+  <market-manifest.json> \
+  <financial-metric-manifest.json>
+```
+
+`Reject` 仅表示不满足当前规则的输入资格，不是对证券的投资结论。当前版本尚未行业中性化，完整限制见批次验证报告和 `research_queue/README.md`。

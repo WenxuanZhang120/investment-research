@@ -73,3 +73,9 @@ python3 scripts/parse_iwencai_fields.py \
 ## `event_taxonomy.json`
 
 保存公告标题到事件类型的版本化关键词规则。分类只用于组织研究队列，不代表利好、利空或投资判断。规则按文件顺序匹配并保留实际命中的关键词；无法匹配的公告进入 `other_announcement`。规则变化必须提升 `taxonomy_version`。
+
+## 组合与筛选规则
+
+`portfolio_schema.json` 规定私密持仓、交易和投资卡的字段与允许状态；`portfolio_review_rules.json` 规定持仓复核类别的透明优先级；`screening_rules.json` 规定全市场初筛资格、因子方向、权重和研究优先级边界。
+
+筛选配置的 `purpose` 固定为 `research_priority_only`。规则变化必须提升相应版本并重新生成批次。当前市场规则明确标记 `cross_industry_preliminary`，在行业数据就绪前不得把全市场百分位当作行业内可比结论。

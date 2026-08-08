@@ -1,0 +1,32 @@
+{
+  "bundle_schema_version": 1,
+  "bundle_id": "6de6ed0c237f2e02ed0f",
+  "screener_version": "1.0.0",
+  "screening_version": "1.0.0",
+  "purpose": "research_priority_only",
+  "cross_industry_preliminary": true,
+  "source_market_manifest": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json",
+  "source_metric_manifest": "data/derived/runs/iwencai/2026/08/08/c851f3cdfa64076c512b/manifest.json",
+  "coverage": {
+    "universe_count": 5550,
+    "eligible_count": 3997,
+    "reject_count": 1553,
+    "priority_counts": {
+      "P0": 40,
+      "P1": 360,
+      "P2": 3597,
+      "Reject": 1553
+    }
+  },
+  "table": {
+    "logical_name": "market_research_queue",
+    "file": "market_research_queue.jsonl",
+    "primary_key": [
+      "security_code",
+      "as_of_date",
+      "screening_version"
+    ],
+    "record_count": 5550,
+    "sha256": "ff019b382b9beada9ba74ebc91a0ee56caae456661e73c9dff39f6280d89f415"
+  }
+}

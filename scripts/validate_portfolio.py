@@ -88,6 +88,9 @@ def validate_card(path: Path, definition: Dict[str, Any]) -> List[str]:
             errors.append(f"{path}: {field} is required")
     if card.get("status") not in definition["status_values"]:
         errors.append(f"{path}: status is not an allowed value")
+    for field in ("thesis_status", "valuation_status", "risk_status"):
+        if card.get(field) not in definition[f"{field}_values"]:
+            errors.append(f"{path}: {field} is not an allowed value")
     for field in definition["array_fields"]:
         if field in card and not isinstance(card[field], list):
             errors.append(f"{path}: {field} must be an array")
