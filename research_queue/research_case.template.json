@@ -1,0 +1,55 @@
+{
+  "research_id": "",
+  "security_code": "",
+  "security_name": "",
+  "priority": "P2",
+  "status": "queued",
+  "as_of_date": "",
+  "facts": [],
+  "inferences": [],
+  "judgments": [],
+  "business_analysis": {
+    "business_model": "",
+    "competitive_advantage": "",
+    "industry_position": "",
+    "management": "",
+    "financial_quality": ""
+  },
+  "growth_analysis": {
+    "volume": "",
+    "price": "",
+    "product_mix": "",
+    "market_share": "",
+    "new_products": "",
+    "geographic_expansion": ""
+  },
+  "investment_thesis": {
+    "why_this_asset": "",
+    "why_now": "",
+    "market_misunderstanding": ""
+  },
+  "valuation": {
+    "bull": {"method": "", "assumptions": [], "estimated_value": null, "currency": ""},
+    "base": {"method": "", "assumptions": [], "estimated_value": null, "currency": ""},
+    "bear": {"method": "", "assumptions": [], "estimated_value": null, "currency": ""}
+  },
+  "red_team": {
+    "what_could_make_this_wrong": [],
+    "short_seller_arguments": [],
+    "weakest_assumptions": []
+  },
+  "portfolio_fit": {
+    "concentration": "",
+    "correlation": "",
+    "sector_exposure": "",
+    "opportunity_cost": ""
+  },
+  "position_sizing": {
+    "proposed_weight": null,
+    "staged_entry_plan": [],
+    "rationale": ""
+  },
+  "thesis_breakers": [],
+  "monitoring_indicators": [],
+  "source_links": []
+}

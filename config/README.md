@@ -79,3 +79,7 @@ python3 scripts/parse_iwencai_fields.py \
 `portfolio_schema.json` 规定私密持仓、交易和投资卡的字段与允许状态；`portfolio_review_rules.json` 规定持仓复核类别的透明优先级；`screening_rules.json` 规定全市场初筛资格、因子方向、权重和研究优先级边界。
 
 筛选配置的 `purpose` 固定为 `research_priority_only`。规则变化必须提升相应版本并重新生成批次。当前市场规则明确标记 `cross_industry_preliminary`，在行业数据就绪前不得把全市场百分位当作行业内可比结论。
+
+## `research_workflow_schema.json`
+
+规定研究状态、置信度、估值情景、允许的决策动作和最终决策权。系统固定 `final_authority = investor`，验证器拒绝把最终权限改为 AI。

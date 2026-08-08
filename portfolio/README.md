@@ -43,3 +43,5 @@ thesis 已破坏优先进入 `EXIT_candidate`，重大风险进入 `TRIM_candida
 - 证券代码使用仓库标准格式（例如带交易所后缀的代码），但验证器暂不猜测或补全后缀；
 - 投资卡必须明确 thesis、why_now、关键假设、thesis breakers、催化剂、风险和估值框架；
 - 任何公开输出必须先脱敏，且不得包含券商账号、外部订单号等账户标识。
+
+`investment_policy.template.json` 用于在投资前明确目标、期限、风险承受能力、流动性需求、允许/禁止资产、集中度和再平衡规则。真实个人约束应保存在 `portfolio/private/`。

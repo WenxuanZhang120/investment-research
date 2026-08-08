@@ -1,0 +1,15 @@
+{
+  "review_id": "",
+  "decision_id": "",
+  "reviewed_at": "",
+  "review_horizon": "",
+  "outcome_summary": "",
+  "thesis_status": "uncertain",
+  "what_was_right": [],
+  "what_was_wrong": [],
+  "process_errors": [],
+  "luck_vs_skill": "",
+  "new_evidence": [],
+  "action_after_review": "DEFER",
+  "rule_changes_proposed": []
+}

@@ -1,0 +1,18 @@
+{
+  "policy_version": "1.0.0",
+  "updated_at": "",
+  "objectives": [],
+  "time_horizon": "",
+  "risk_capacity": "",
+  "liquidity_needs": "",
+  "permitted_assets": [],
+  "prohibited_assets": [],
+  "position_limits": {
+    "single_security_max_weight": null,
+    "single_industry_max_weight": null,
+    "cash_min_weight": null
+  },
+  "rebalance_rules": [],
+  "decision_authority": "investor",
+  "notes": ""
+}
