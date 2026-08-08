@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 
-PARSER_VERSION = "1.0.0"
+PARSER_VERSION = "2.0.0"
 DEFAULT_MAPPING_FILE = (
     Path(__file__).resolve().parents[1] / "config" / "field_mappings.json"
 )
@@ -30,6 +30,12 @@ REPORT_PERIODS = {
     "三季报": ("09-30", "Q3"),
     "三季度": ("09-30", "Q3"),
     "年报": ("12-31", "FY"),
+}
+REPORT_SUFFIXES_BY_MONTH_DAY = {
+    "03-31": "Q1",
+    "06-30": "H1",
+    "09-30": "Q3",
+    "12-31": "FY",
 }
 
 
@@ -77,6 +83,8 @@ def load_field_mappings(
                 "category": category,
                 "unit": entry.get("unit"),
                 "adjustment_type": entry.get("adjustment_type"),
+                "statement_type": entry.get("statement_type"),
+                "value_nature": entry.get("value_nature"),
             }
 
     return mapping_version, mappings
@@ -148,7 +156,26 @@ def parse_field_name(
     mapping = mappings.get(base_field_name)
     mapping_status = "mapped" if mapping else "unmapped"
 
-    if mapping and context["context_type"] in {"date", "report_period"}:
+    if (
+        mapping
+        and mapping["category"] in {"financial", "financial_metadata"}
+        and context["context_type"] == "date"
+    ):
+        period_end = context["as_of_date"]
+        month_day = period_end[5:] if period_end else None
+        suffix = REPORT_SUFFIXES_BY_MONTH_DAY.get(month_day)
+        context = {
+            "context_type": "financial_period_date",
+            "as_of_date": None,
+            "period_end": period_end,
+            "report_type": f"{period_end[:4]}{suffix}" if suffix else None,
+        }
+
+    if mapping and context["context_type"] in {
+        "date",
+        "report_period",
+        "financial_period_date",
+    }:
         confidence = "high"
     elif mapping and context["context_type"] == "none":
         confidence = "medium"
@@ -164,6 +191,8 @@ def parse_field_name(
         **context,
         "unit": mapping["unit"] if mapping else None,
         "adjustment_type": mapping["adjustment_type"] if mapping else None,
+        "statement_type": mapping["statement_type"] if mapping else None,
+        "value_nature": mapping["value_nature"] if mapping else None,
         "mapping_status": mapping_status,
         "mapping_version": mapping_version,
         "parser_version": PARSER_VERSION,

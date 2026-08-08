@@ -1,5 +1,5 @@
 {
-  "mapping_version": "2.0.0",
+  "mapping_version": "3.0.0",
   "fields": [
     {
       "canonical_field_name": "security_code",
@@ -85,7 +85,132 @@
     {
       "canonical_field_name": "net_income_parent",
       "category": "financial",
-      "raw_base_fields": ["归母净利润"]
+      "statement_type": "income_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["归母净利润", "归属于母公司所有者的净利润"]
+    },
+    {
+      "canonical_field_name": "filing_date",
+      "category": "financial_metadata",
+      "raw_base_fields": ["公告日期", "定期报告实际披露日期"]
+    },
+    {
+      "canonical_field_name": "report_period_label",
+      "category": "financial_metadata",
+      "raw_base_fields": ["报告期"]
+    },
+    {
+      "canonical_field_name": "revenue",
+      "category": "financial",
+      "statement_type": "income_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["营业收入"]
+    },
+    {
+      "canonical_field_name": "total_operating_revenue",
+      "category": "financial",
+      "statement_type": "income_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["营业总收入"]
+    },
+    {
+      "canonical_field_name": "operating_profit",
+      "category": "financial",
+      "statement_type": "income_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["营业利润"]
+    },
+    {
+      "canonical_field_name": "total_profit",
+      "category": "financial",
+      "statement_type": "income_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["利润总额"]
+    },
+    {
+      "canonical_field_name": "total_assets",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["总资产", "资产总计"]
+    },
+    {
+      "canonical_field_name": "total_liabilities",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["负债", "负债合计"]
+    },
+    {
+      "canonical_field_name": "equity_parent",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["归母权益", "归属于母公司所有者权益合计"]
+    },
+    {
+      "canonical_field_name": "monetary_funds",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["货币资金"]
+    },
+    {
+      "canonical_field_name": "accounts_receivable",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["应收账款"]
+    },
+    {
+      "canonical_field_name": "inventory",
+      "category": "financial",
+      "statement_type": "balance_sheet",
+      "value_nature": "instant",
+      "unit": "CNY",
+      "raw_base_fields": ["存货"]
+    },
+    {
+      "canonical_field_name": "net_cash_flow_operating",
+      "category": "financial",
+      "statement_type": "cash_flow_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["经营活动产生的现金流量净额"]
+    },
+    {
+      "canonical_field_name": "net_cash_flow_investing",
+      "category": "financial",
+      "statement_type": "cash_flow_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["投资活动产生的现金流量净额"]
+    },
+    {
+      "canonical_field_name": "net_cash_flow_financing",
+      "category": "financial",
+      "statement_type": "cash_flow_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["筹资活动产生的现金流量净额"]
+    },
+    {
+      "canonical_field_name": "net_increase_cash_and_equivalents",
+      "category": "financial",
+      "statement_type": "cash_flow_statement",
+      "value_nature": "duration_ytd",
+      "unit": "CNY",
+      "raw_base_fields": ["现金及现金等价物净增加额"]
     }
   ]
 }

@@ -1,0 +1,180 @@
+import hashlib
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from scripts.normalize_iwencai_financials import (  # noqa: E402
+    FinancialNormalizationError,
+    build_financial_batch,
+    build_financial_tables,
+    normalize_financial_snapshots,
+)
+
+
+ANNUAL_SNAPSHOT = REPOSITORY_ROOT / (
+    "data/raw/iwencai/2026/08/08/"
+    "20260808T192138676741+0800_e53d5eb6b4c8d9fd8b52.json"
+)
+Q1_SNAPSHOT = REPOSITORY_ROOT / (
+    "data/raw/iwencai/2026/08/08/"
+    "20260808T192134198330+0800_12929e932cf14a7cda8b.json"
+)
+
+
+def canonical_payload(payload):
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+
+class NormalizeIwencaiFinancialsTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary_directory.cleanup)
+        self.root = Path(self.temporary_directory.name)
+
+    def test_real_annual_snapshot_builds_long_form_financial_facts(self) -> None:
+        built = build_financial_tables(ANNUAL_SNAPSHOT)
+
+        self.assertEqual(len(built["tables"]["financial_reports"]), 3)
+        self.assertEqual(len(built["tables"]["financial_facts"]), 45)
+        self.assertEqual(built["period_ends"], ["2025-12-31"])
+        report = next(
+            item
+            for item in built["tables"]["financial_reports"]
+            if item["security_code"] == "600519.SH"
+        )
+        self.assertEqual(report["report_type"], "2025FY")
+        self.assertEqual(report["filing_date"], "2026-04-17")
+        self.assertEqual(report["available_from"], "2026-04-17")
+        revenue = next(
+            item
+            for item in built["tables"]["financial_facts"]
+            if item["security_code"] == "600519.SH"
+            and item["canonical_field_name"] == "revenue"
+        )
+        self.assertEqual(revenue["statement_type"], "income_statement")
+        self.assertEqual(revenue["value_nature"], "duration_ytd")
+        self.assertEqual(revenue["unit"], "CNY")
+        self.assertEqual(
+            revenue["field_lineage"]["revenue"]["raw_field_name"],
+            "营业收入[20251231]",
+        )
+
+    def test_missing_bank_items_remain_explicit_null_facts(self) -> None:
+        built = build_financial_tables(ANNUAL_SNAPSHOT)
+
+        bank_missing = {
+            item["canonical_field_name"]
+            for item in built["tables"]["financial_facts"]
+            if item["security_code"] == "600036.SH"
+            and item["value_status"] == "missing_in_source"
+        }
+        self.assertEqual(
+            bank_missing,
+            {"accounts_receivable", "inventory", "monetary_funds"},
+        )
+        self.assertTrue(
+            all(
+                item["value"] is None
+                for item in built["tables"]["financial_facts"]
+                if item["security_code"] == "600036.SH"
+                and item["value_status"] == "missing_in_source"
+            )
+        )
+
+    def test_two_period_batch_preserves_point_in_time_versions(self) -> None:
+        built = build_financial_batch([ANNUAL_SNAPSHOT, Q1_SNAPSHOT])
+
+        self.assertEqual(
+            built["coverage"],
+            {
+                "source_snapshot_count": 2,
+                "security_count": 3,
+                "period_ends": ["2025-12-31", "2026-03-31"],
+                "report_types": ["2025FY", "2026Q1"],
+                "financial_report_count": 6,
+                "financial_fact_count": 90,
+                "present_fact_count": 84,
+                "missing_fact_count": 6,
+                "fact_count_by_statement": {
+                    "income_statement": 30,
+                    "balance_sheet": 36,
+                    "cash_flow_statement": 24,
+                },
+            },
+        )
+        fact_keys = [
+            (
+                item["security_code"],
+                item["period_end"],
+                item["canonical_field_name"],
+                item["raw_record_id"],
+            )
+            for item in built["tables"]["financial_facts"]
+        ]
+        self.assertEqual(len(fact_keys), len(set(fact_keys)))
+
+    def test_writes_atomic_bundle_and_refuses_overwrite(self) -> None:
+        destination = normalize_financial_snapshots(
+            [ANNUAL_SNAPSHOT, Q1_SNAPSHOT],
+            normalized_root=self.root,
+        )
+
+        manifest = json.loads(
+            (destination / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["normalizer_version"], "1.0.0")
+        self.assertEqual(manifest["mapping_version"], "3.0.0")
+        self.assertEqual(
+            manifest["tables"]["financial_reports"]["record_count"],
+            6,
+        )
+        self.assertEqual(
+            manifest["tables"]["financial_facts"]["record_count"],
+            90,
+        )
+
+        with self.assertRaises(FileExistsError):
+            normalize_financial_snapshots(
+                [ANNUAL_SNAPSHOT, Q1_SNAPSHOT],
+                normalized_root=self.root,
+            )
+
+    def test_rejects_tampered_raw_payload(self) -> None:
+        document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        document["payload"]["datas"][0]["股票简称"] = "被修改"
+        snapshot = self.root / "tampered.json"
+        snapshot.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+
+        with self.assertRaisesRegex(FinancialNormalizationError, "checksum"):
+            build_financial_tables(snapshot)
+
+    def test_rejects_filing_date_after_fetch_time(self) -> None:
+        document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        document["payload"]["datas"][0]["公告日期[20251231]"] = "20270101"
+        document["metadata"]["payload_sha256"] = hashlib.sha256(
+            canonical_payload(document["payload"])
+        ).hexdigest()
+        snapshot = self.root / "future-filing.json"
+        snapshot.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            FinancialNormalizationError,
+            "later than fetched_at",
+        ):
+            build_financial_tables(snapshot)
+
+
+if __name__ == "__main__":
+    unittest.main()

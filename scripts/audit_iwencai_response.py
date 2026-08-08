@@ -24,6 +24,56 @@ def extract_table_components(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Find table components in the observed iWencai response structure."""
     components: List[Dict[str, Any]] = []
 
+    direct_rows = payload.get("datas")
+    if isinstance(direct_rows, list):
+        ordered_keys: List[str] = []
+        for row in direct_rows:
+            if not isinstance(row, dict):
+                continue
+            for key in row:
+                if isinstance(key, str) and key not in ordered_keys:
+                    ordered_keys.append(key)
+
+        def inferred_type(key: str) -> Optional[str]:
+            for row in direct_rows:
+                if not isinstance(row, dict):
+                    continue
+                value = row.get(key)
+                if value in (None, ""):
+                    continue
+                if isinstance(value, bool):
+                    return "BOOL"
+                if isinstance(value, (int, float)):
+                    return "DOUBLE"
+                if isinstance(value, str):
+                    return "STR"
+                return type(value).__name__.upper()
+            return None
+
+        components.append(
+            {
+                "data": {
+                    "columns": [
+                        {
+                            "key": key,
+                            "index_name": key,
+                            "source": "iwencai_openapi",
+                            "type": inferred_type(key),
+                            "unit": "",
+                            "timestamp": None,
+                        }
+                        for key in ordered_keys
+                    ],
+                    "datas": direct_rows,
+                    "meta": {
+                        "page": payload.get("page"),
+                        "limit": payload.get("limit"),
+                        "code_count": payload.get("code_count"),
+                    },
+                }
+            }
+        )
+
     pagination_answer = payload.get("answer")
     if isinstance(pagination_answer, dict):
         pagination_components = pagination_answer.get("components", [])
