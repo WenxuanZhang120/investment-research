@@ -46,6 +46,8 @@ git diff --cached
 
 如发现凭据已经被提交，应先撤销或轮换凭据，并在仓库公开前清理 Git 历史。
 
-GitHub Actions 中的数据源密钥只能保存为名为 `IWENCAI_API_KEY` 的 GitHub Secret，不能写入工作流、配置、日志、Raw 响应或 Actions artifact。手动采集审计只记录凭据是否存在，不记录凭据值；上传产物必须再次确认不含授权请求头和本机绝对路径。
+旧受控采集工作流曾预留 `IWENCAI_API_KEY` GitHub Secret；该入口目前不属于每日运行路径。任何未来数据源密钥都只能保存在 GitHub Secret 或本机安全环境中，不能写入工作流、配置、日志、Raw 响应或 Actions artifact。采集审计只能记录凭据是否存在，不能记录凭据值。
+
+Codex 每日采集产物同样不得包含 Token、Cookie、Authorization 请求头、密码或其他凭据字段。临时收件箱 `.codex-collection-inbox/` 不进入 Git；只有经过导入器验证、已经去除认证上下文且保留原始数据内容的 Raw 快照和便携审计文件才能进入公开仓库。
 
 下载的采集产物不得直接复制进仓库。专用导入器必须先验证凭据排除标记、Raw 哈希、查询日志和路径边界；导入报告不得保存 Actions 下载目录或其他本机绝对路径。
