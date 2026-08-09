@@ -115,6 +115,32 @@ class CollectIwencaiFinancialsTests(unittest.TestCase):
         self.assertEqual(result["query_record_count"], 5)
         self.assertFalse(result["complete_query"])
 
+    def test_page_budget_saves_a_validated_partial_segment(self) -> None:
+        calls = []
+
+        def fake_request(**kwargs):
+            calls.append(kwargs)
+            return self.response(kwargs["page"])
+
+        result = collect_query(
+            "全部A股2025年年报",
+            limit=2,
+            page_budget=2,
+            raw_root=self.raw_root,
+            request_page=fake_request,
+        )
+
+        self.assertEqual([call["page"] for call in calls], [1, 2])
+        self.assertEqual(result["page_count"], 2)
+        self.assertEqual(result["record_count"], 4)
+        self.assertFalse(result["complete_query"])
+        self.assertFalse(result["reached_query_end"])
+        self.assertEqual(result["remaining_page_count"], 1)
+        self.assertEqual(result["next_page"], 3)
+        self.assertEqual(
+            len(list(self.raw_root.glob("iwencai/*/*/*/*.json"))), 2
+        )
+
     def test_requires_environment_api_key(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(CollectionError, "IWENCAI_API_KEY"):

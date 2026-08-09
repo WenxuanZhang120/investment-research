@@ -164,6 +164,8 @@ def collect_job(
     job_id: str,
     *,
     raw_root: Path = DEFAULT_RAW_ROOT,
+    page_budget: Optional[int] = None,
+    timeout: int = 60,
 ) -> Dict[str, Any]:
     job = _job(plan, job_id)
     status = inspect_job(job, raw_root=raw_root)
@@ -176,6 +178,8 @@ def collect_job(
         job["query"],
         start_page=start_page,
         limit=plan["page_limit"],
+        page_budget=page_budget,
+        timeout=timeout,
         raw_root=raw_root,
     )
 
@@ -210,6 +214,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     status_parser.add_argument("--require-complete", action="store_true")
     collect_parser = subparsers.add_parser("collect")
     collect_parser.add_argument("--job", required=True)
+    collect_parser.add_argument("--page-budget", type=int)
+    collect_parser.add_argument("--timeout", type=int, default=60)
     normalize_parser = subparsers.add_parser("normalize")
     normalize_parser.add_argument("--job", required=True)
     args = parser.parse_args(argv)
@@ -225,7 +231,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 else 0
             )
         if args.command == "collect":
-            result = collect_job(plan, args.job, raw_root=args.raw_root)
+            result = collect_job(
+                plan,
+                args.job,
+                raw_root=args.raw_root,
+                page_budget=args.page_budget,
+                timeout=args.timeout,
+            )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         destination = normalize_job(

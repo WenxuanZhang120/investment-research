@@ -1,0 +1,78 @@
+name: Manual guarded financial collection
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Preflight is offline; collect requires confirmation and a secret.
+        required: true
+        default: preflight
+        type: choice
+        options:
+          - preflight
+          - collect
+      job_id:
+        description: Versioned financial collection job
+        required: true
+        type: choice
+        options:
+          - 2026q1_base_resume
+          - 2024fy_advanced_inputs
+          - 2025fy_advanced_supplement
+          - 2025q1_advanced_inputs
+          - 2026q1_advanced_supplement
+      confirmation:
+        description: For collection, enter COLLECT followed by a colon and the exact job ID.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guarded-financial-collection-${{ inputs.job_id }}
+  cancel-in-progress: false
+
+jobs:
+  guarded-collection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: iwencai-collection
+      deployment: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Run offline collection preflight
+        if: ${{ inputs.action == 'preflight' }}
+        env:
+          REQUESTED_JOB: ${{ inputs.job_id }}
+        run: >-
+          python3 scripts/run_guarded_financial_collection.py
+          --action preflight
+          --job "$REQUESTED_JOB"
+          --artifact-root action-artifacts/financial-collection
+      - name: Run explicitly authorized collection
+        if: ${{ inputs.action == 'collect' }}
+        env:
+          IWENCAI_API_KEY: ${{ secrets.IWENCAI_API_KEY }}
+          REQUESTED_JOB: ${{ inputs.job_id }}
+          COLLECTION_CONFIRMATION: ${{ inputs.confirmation }}
+        run: >-
+          python3 scripts/run_guarded_financial_collection.py
+          --action collect
+          --job "$REQUESTED_JOB"
+          --confirmation "$COLLECTION_CONFIRMATION"
+          --artifact-root action-artifacts/financial-collection
+      - name: Upload collection audit and new Raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: financial-collection-${{ inputs.action }}-${{ inputs.job_id }}-${{ github.run_id }}
+          path: action-artifacts/financial-collection/
+          if-no-files-found: warn
+          retention-days: 30
