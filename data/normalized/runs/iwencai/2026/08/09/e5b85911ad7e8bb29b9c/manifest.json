@@ -1,0 +1,29 @@
+{
+  "bundle_schema_version": 1,
+  "bundle_id": "e5b85911ad7e8bb29b9c",
+  "normalizer_version": "1.2.0",
+  "taxonomy_version": "1.2.0",
+  "source": "iwencai",
+  "source_raw_record_id": "9d1359e703deabbf891b",
+  "fetched_at": "2026-08-09T18:45:22.170734+08:00",
+  "collection_scope": {
+    "scope_schema_version": 1,
+    "scope_type": "market_wide",
+    "topic_id": "global_macro_market_news"
+  },
+  "coverage": {
+    "record_count": 13,
+    "event_types": [
+      "other_announcement"
+    ]
+  },
+  "table": {
+    "logical_name": "news_items",
+    "file": "news_items.jsonl",
+    "primary_key": [
+      "news_id"
+    ],
+    "record_count": 13,
+    "sha256": "339c65ff68be502b5f628cba2d832a8510152cbe5a0047e6bae6ca10e05b6bdf"
+  }
+}
