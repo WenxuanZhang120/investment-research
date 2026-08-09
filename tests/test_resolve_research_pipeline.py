@@ -42,6 +42,10 @@ class ResolveResearchPipelineTests(unittest.TestCase):
             REPOSITORY_ROOT / "config/screening_rules.json",
             self.root / "config/screening_rules.json",
         )
+        shutil.copy2(
+            REPOSITORY_ROOT / "config/investment_universe.json",
+            self.root / "config/investment_universe.json",
+        )
         self.query = "A股 最近七日 股份回购公告"
 
     def settings(self, *, minimum=1):
@@ -53,6 +57,7 @@ class ResolveResearchPipelineTests(unittest.TestCase):
             "reports_root": "reports/daily",
             "event_taxonomy": "config/event_taxonomy.json",
             "screening_rules": "config/screening_rules.json",
+            "investment_universe": "config/investment_universe.json",
             "minimum_screening_universe": minimum,
             "timeout_seconds": 30,
             "monitoring_routes": [
@@ -137,11 +142,30 @@ class ResolveResearchPipelineTests(unittest.TestCase):
             + "\n"
         ).encode()
         (market_dir / "valuations.jsonl").write_bytes(valuations)
+        security_master = (
+            json.dumps(
+                {
+                    "security_code": "000001.SZ",
+                    "security_name": "甲公司",
+                    "exchange": "SZ",
+                    "listing_status": "正常上市",
+                    "market_memberships": ["沪深A股"],
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        ).encode()
+        (market_dir / "security_master.jsonl").write_bytes(security_master)
         market_manifest = market_dir / "manifest.json"
         market_manifest.write_text(
             json.dumps(
                 {
                     "tables": {
+                        "security_master": {
+                            "file": "security_master.jsonl",
+                            "record_count": 1,
+                            "sha256": hashlib.sha256(security_master).hexdigest(),
+                        },
                         "valuation_snapshots": {
                             "file": "valuations.jsonl",
                             "record_count": 1,
@@ -209,6 +233,7 @@ class ResolveResearchPipelineTests(unittest.TestCase):
                 market,
                 metrics,
                 rules_path=self.root / "config/screening_rules.json",
+                universe_path=self.root / "config/investment_universe.json",
             ),
             derived_root=self.root / "data/derived",
             repository_root=self.root,

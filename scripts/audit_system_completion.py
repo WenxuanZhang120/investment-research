@@ -15,6 +15,11 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.run_financial_collection_plan import inspect_plan, load_plan  # noqa: E402
+from scripts.investment_universe import (  # noqa: E402
+    load_investment_universe,
+    stock_code_allowed,
+    stock_record_allowed,
+)
 from scripts.repository_paths import repository_relative_path  # noqa: E402
 from scripts.validate_repository import validate_repository  # noqa: E402
 
@@ -74,6 +79,14 @@ def _unique_normalized_records(
     return len(identities)
 
 
+def _table_path(item: Dict[str, Any], table_name: str) -> Optional[Path]:
+    table = item["manifest"].get("tables", {}).get(table_name)
+    if not isinstance(table, dict) or not isinstance(table.get("file"), str):
+        return None
+    path = item["path"].parent / table["file"]
+    return path if path.is_file() else None
+
+
 def _monitoring_report_evidence(
     root: Path,
     *,
@@ -129,6 +142,8 @@ def audit_system(
     root = Path(root)
     requirements = _json(requirements_path)
     minimum = requirements["minimum_counts"]
+    universe_path = root / requirements["investment_universe"]
+    universe = load_investment_universe(universe_path)
     normalized = _manifests(root, "normalized")
     derived = _manifests(root, "derived")
     results = []
@@ -155,7 +170,9 @@ def audit_system(
     )
 
     mapping = _json(root / "config/field_mappings.json")
-    parser_ready = mapping.get("mapping_version") == "3.2.0" and (
+    parser_ready = mapping.get("mapping_version") == requirements.get(
+        "required_mapping_version"
+    ) and (
         root / "scripts/parse_iwencai_fields.py"
     ).is_file()
     results.append(
@@ -163,15 +180,22 @@ def audit_system(
             "dynamic_field_parsing",
             parser_ready,
             {"mapping_version": mapping.get("mapping_version")},
-            [] if parser_ready else ["mapping 3.2.0 parser evidence is missing"],
+            [] if parser_ready else ["required field mapping/parser evidence is missing"],
         )
     )
 
     market_candidates = []
     for item in normalized:
-        coverage = item["manifest"].get("coverage", {})
-        count = coverage.get("security_master_count", 0)
-        if isinstance(count, int):
+        path = _table_path(item, "security_master")
+        if path is not None:
+            count = sum(
+                stock_record_allowed(row, universe)
+                for row in (
+                    json.loads(line)
+                    for line in path.read_text(encoding="utf-8").splitlines()
+                    if line.strip()
+                )
+            )
             market_candidates.append(
                 (
                     count,
@@ -186,18 +210,63 @@ def audit_system(
         _result(
             "full_market_database",
             market_ready,
-            {"best_security_count": best_market[0], "manifest": best_market[1]},
-            [] if market_ready else ["full-market normalized bundle is missing"],
+            {
+                "universe_id": universe["stocks"]["universe_id"],
+                "best_security_count": best_market[0],
+                "manifest": best_market[1],
+            },
+            [] if market_ready else ["configured stock-universe bundle is missing"],
+        )
+    )
+
+    etf_candidates = []
+    for item in normalized:
+        coverage = item["manifest"].get("coverage", {})
+        count = coverage.get("etf_count", 0)
+        if (
+            item["manifest"].get("universe_id") == universe["etfs"]["universe_id"]
+            and isinstance(count, int)
+        ):
+            etf_candidates.append(
+                (
+                    count,
+                    repository_relative_path(item["path"], repository_root=root),
+                )
+            )
+    best_etf = max(etf_candidates, default=(0, None))
+    etf_ready = best_etf[0] >= minimum["target_etfs"]
+    results.append(
+        _result(
+            "target_etf_coverage",
+            etf_ready,
+            {
+                "universe_id": universe["etfs"]["universe_id"],
+                "best_etf_count": best_etf[0],
+                "manifest": best_etf[1],
+            },
+            [] if etf_ready else ["target ETF normalized bundle is missing"],
         )
     )
 
     financial_periods: Dict[str, int] = {}
     financial_manifests = {}
     for item in normalized:
-        coverage = item["manifest"].get("coverage", {})
-        security_count = coverage.get("security_count", 0)
-        for period in coverage.get("period_ends", []):
-            if isinstance(security_count, int) and security_count > financial_periods.get(period, 0):
+        path = _table_path(item, "financial_reports")
+        if path is None:
+            continue
+        counts: Dict[str, set[str]] = {}
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                if stock_code_allowed(row.get("security_code"), universe):
+                    counts.setdefault(row["period_end"], set()).add(
+                        row["security_code"]
+                    )
+        for period, codes in counts.items():
+            security_count = len(codes)
+            if security_count > financial_periods.get(period, 0):
                 financial_periods[period] = security_count
                 financial_manifests[period] = repository_relative_path(
                     item["path"], repository_root=root
@@ -326,10 +395,19 @@ def audit_system(
     )
 
     screening_count = 0
+    screening_manifest = None
     for item in derived:
         table = item["manifest"].get("table", {})
-        if table.get("logical_name") == "market_research_queue":
-            screening_count = max(screening_count, table.get("record_count", 0))
+        if (
+            table.get("logical_name") == "market_research_queue"
+            and item["manifest"].get("universe_id")
+            == universe["stocks"]["universe_id"]
+            and table.get("record_count", 0) > screening_count
+        ):
+            screening_count = table["record_count"]
+            screening_manifest = repository_relative_path(
+                item["path"], repository_root=root
+            )
     screening_ready = (
         screening_count >= minimum["screening_universe"]
         and (root / "scripts/classify_portfolio_review.py").is_file()
@@ -338,7 +416,11 @@ def audit_system(
         _result(
             "market_and_portfolio_screening",
             screening_ready,
-            {"largest_screening_universe": screening_count},
+            {
+                "universe_id": universe["stocks"]["universe_id"],
+                "largest_screening_universe": screening_count,
+                "manifest": screening_manifest,
+            },
             [] if screening_ready else ["market or portfolio screening evidence is incomplete"],
         )
     )

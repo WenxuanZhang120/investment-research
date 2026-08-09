@@ -1,0 +1,37 @@
+{
+  "bundle_schema_version": 1,
+  "bundle_id": "b8e8a88ce7d140110835",
+  "screener_version": "1.1.0",
+  "screening_version": "1.1.0",
+  "universe_version": "1.0.0",
+  "universe_id": "cn_sh_sz_main_board_a",
+  "investment_universe": "config/investment_universe.json",
+  "purpose": "research_priority_only",
+  "cross_industry_preliminary": true,
+  "source_market_manifest": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json",
+  "source_metric_manifest": "data/derived/runs/iwencai/2026/08/08/588bb40581c5187e678c/manifest.json",
+  "coverage": {
+    "universe_count": 3193,
+    "configured_stock_universe_id": "cn_sh_sz_main_board_a",
+    "excluded_by_universe_count": 2350,
+    "eligible_count": 2343,
+    "reject_count": 850,
+    "priority_counts": {
+      "P0": 24,
+      "P1": 211,
+      "P2": 2108,
+      "Reject": 850
+    }
+  },
+  "table": {
+    "logical_name": "market_research_queue",
+    "file": "market_research_queue.jsonl",
+    "primary_key": [
+      "security_code",
+      "as_of_date",
+      "screening_version"
+    ],
+    "record_count": 3193,
+    "sha256": "84801baa5b752c092ac35e9d33276be95c6c77c1affe5e01404acc5fea5fd79c"
+  }
+}

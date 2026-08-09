@@ -20,10 +20,15 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.repository_paths import repository_relative_path  # noqa: E402
+from scripts.investment_universe import (  # noqa: E402
+    DEFAULT_UNIVERSE,
+    load_investment_universe,
+    stock_record_allowed,
+)
 
 DEFAULT_RULES = REPOSITORY_ROOT / "config" / "screening_rules.json"
 DEFAULT_DERIVED_ROOT = REPOSITORY_ROOT / "data" / "derived"
-SCREENER_VERSION = "1.0.0"
+SCREENER_VERSION = "1.1.0"
 
 
 class ScreeningError(ValueError):
@@ -70,6 +75,25 @@ def _load_valuations(manifest_path: Path) -> Dict[str, Dict[str, Any]]:
     return latest
 
 
+def _load_security_master(manifest_path: Path) -> Dict[str, Dict[str, Any]]:
+    manifest = _read_json(manifest_path)
+    table = manifest.get("tables", {}).get("security_master")
+    if not isinstance(table, dict):
+        raise ScreeningError("market manifest has no security_master table")
+    path = manifest_path.parent / table["file"]
+    if _sha(path) != table.get("sha256"):
+        raise ScreeningError("security master hash mismatch")
+    latest: Dict[str, Dict[str, Any]] = {}
+    for row in _iter_jsonl(path):
+        code = row["security_code"]
+        existing = latest.get(code)
+        if existing is None or (row["observed_date"], row["fetched_at"]) > (
+            existing["observed_date"], existing["fetched_at"]
+        ):
+            latest[code] = row
+    return latest
+
+
 def _load_metrics(manifest_path: Path) -> Dict[str, Dict[str, Dict[str, Any]]]:
     manifest = _read_json(manifest_path)
     table = manifest.get("table")
@@ -107,13 +131,21 @@ def build_screen(
     metric_manifest_path: Path,
     *,
     rules_path: Path = DEFAULT_RULES,
+    universe_path: Path = DEFAULT_UNIVERSE,
 ) -> Dict[str, Any]:
     rules = _read_json(rules_path)
+    universe = load_investment_universe(universe_path)
+    security_master = _load_security_master(Path(market_manifest_path))
+    allowed_codes = {
+        code
+        for code, record in security_master.items()
+        if stock_record_allowed(record, universe)
+    }
     valuations = _load_valuations(Path(market_manifest_path))
     metrics = _load_metrics(Path(metric_manifest_path))
     candidates = []
     required = rules["eligibility"]["required_metrics"]
-    all_codes = sorted(set(valuations) | set(metrics))
+    all_codes = sorted((set(valuations) | set(metrics)) & allowed_codes)
     for code in all_codes:
         valuation = valuations.get(code)
         code_metrics = metrics.get(code, {})
@@ -213,6 +245,7 @@ def build_screen(
         (
             SCREENER_VERSION,
             rules["screening_version"],
+            universe["universe_version"],
             _sha(Path(market_manifest_path)),
             _sha(Path(metric_manifest_path)),
         )
@@ -221,10 +254,14 @@ def build_screen(
         "bundle_id": hashlib.sha256(identity).hexdigest()[:20],
         "records": candidates,
         "rules": rules,
+        "universe": universe,
+        "universe_path": Path(universe_path),
         "market_manifest": Path(market_manifest_path),
         "metric_manifest": Path(metric_manifest_path),
         "coverage": {
             "universe_count": len(candidates),
+            "configured_stock_universe_id": universe["stocks"]["universe_id"],
+            "excluded_by_universe_count": len(security_master) - len(allowed_codes),
             "eligible_count": len(eligible),
             "reject_count": len(candidates) - len(eligible),
             "priority_counts": {
@@ -264,6 +301,11 @@ def write_screen(
             "bundle_id": built["bundle_id"],
             "screener_version": SCREENER_VERSION,
             "screening_version": built["rules"]["screening_version"],
+            "universe_version": built["universe"]["universe_version"],
+            "universe_id": built["universe"]["stocks"]["universe_id"],
+            "investment_universe": repository_relative_path(
+                built["universe_path"], repository_root=repository_root
+            ),
             "purpose": built["rules"]["purpose"],
             "cross_industry_preliminary": built["rules"]["cross_industry_preliminary"],
             "source_market_manifest": repository_relative_path(
@@ -297,11 +339,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("market_manifest", type=Path)
     parser.add_argument("metric_manifest", type=Path)
     parser.add_argument("--rules", type=Path, default=DEFAULT_RULES)
+    parser.add_argument("--universe", type=Path, default=DEFAULT_UNIVERSE)
     parser.add_argument("--derived-root", type=Path, default=DEFAULT_DERIVED_ROOT)
     args = parser.parse_args(argv)
     try:
         destination = write_screen(
-            build_screen(args.market_manifest, args.metric_manifest, rules_path=args.rules),
+            build_screen(
+                args.market_manifest,
+                args.metric_manifest,
+                rules_path=args.rules,
+                universe_path=args.universe,
+            ),
             derived_root=args.derived_root,
             repository_root=REPOSITORY_ROOT,
         )

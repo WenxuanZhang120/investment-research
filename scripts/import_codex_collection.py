@@ -25,6 +25,10 @@ from scripts.normalize_iwencai_financials import (  # noqa: E402
     build_financial_batch,
     write_financial_bundle,
 )
+from scripts.normalize_iwencai_etfs import (  # noqa: E402
+    build_etf_batch,
+    write_etf_bundle,
+)
 from scripts.normalize_iwencai_market import (  # noqa: E402
     build_normalized_batch,
     write_normalized_bundle,
@@ -43,7 +47,7 @@ from scripts.save_raw_response import (  # noqa: E402
 
 ARTIFACT_SCHEMA_VERSION = 1
 IMPORT_SCHEMA_VERSION = 1
-DATASET_KINDS = {"market", "financial", "announcements", "news"}
+DATASET_KINDS = {"market", "etf", "financial", "announcements", "news"}
 SOURCE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 COLLECTION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 SENSITIVE_KEYS = {
@@ -367,6 +371,24 @@ def normalize_collection(
         )
         if not (destination / "manifest.json").is_file():
             destination = write_financial_bundle(
+                built, normalized_root=normalized_root
+            )
+        return [destination]
+    if kind == "etf":
+        built = build_etf_batch(
+            snapshots, repository_root=repository_root
+        )
+        fetched = datetime.fromisoformat(built["fetched_at_start"])
+        destination = normalized_root.joinpath(
+            "runs",
+            built["source"],
+            fetched.strftime("%Y"),
+            fetched.strftime("%m"),
+            fetched.strftime("%d"),
+            built["bundle_id"],
+        )
+        if not (destination / "manifest.json").is_file():
+            destination = write_etf_bundle(
                 built, normalized_root=normalized_root
             )
         return [destination]

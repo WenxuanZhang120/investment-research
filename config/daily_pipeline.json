@@ -6,6 +6,7 @@
   "input_readiness": {
     "schema_version": 1,
     "financial_collection_plan": "config/financial_collection_plan.json",
+    "investment_universe": "config/investment_universe.json",
     "raw_root": "data/raw",
     "mapping_file": "config/field_mappings.json",
     "normalized_root": "data/normalized",
@@ -38,18 +39,19 @@
     "reports_root": "reports/daily",
     "event_taxonomy": "config/event_taxonomy.json",
     "screening_rules": "config/screening_rules.json",
-    "minimum_screening_universe": 5000,
+    "investment_universe": "config/investment_universe.json",
+    "minimum_screening_universe": 3000,
     "timeout_seconds": 900,
     "monitoring_routes": [
       {
         "route_id": "recent_share_repurchase_announcements",
         "stream": "announcements",
-        "query": "A股 最近七日 股份回购公告"
+        "query": "沪深主板A股 最近七日 股份回购公告，排除创业板、科创板和北交所"
       },
       {
         "route_id": "recent_important_company_news",
         "stream": "news",
-        "query": "A股 最近七日 重要公司新闻"
+        "query": "沪深主板A股 最近七日 重要公司新闻，排除创业板、科创板和北交所"
       }
     ]
   },

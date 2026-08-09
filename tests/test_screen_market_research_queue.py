@@ -26,8 +26,17 @@ class ScreenMarketResearchQueueTests(unittest.TestCase):
         market = REPOSITORY_ROOT / "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json"
         metrics = REPOSITORY_ROOT / "data/derived/runs/iwencai/2026/08/08/c851f3cdfa64076c512b/manifest.json"
         built = build_screen(market, metrics)
-        self.assertEqual(built["coverage"]["universe_count"], 5550)
-        self.assertEqual(sum(built["coverage"]["priority_counts"].values()), 5550)
+        self.assertEqual(built["coverage"]["universe_count"], 3193)
+        self.assertEqual(sum(built["coverage"]["priority_counts"].values()), 3193)
+        self.assertTrue(
+            all(
+                not record["security_code"].startswith(
+                    ("300", "301", "302", "688", "689")
+                )
+                and not record["security_code"].endswith(".BJ")
+                for record in built["records"]
+            )
+        )
         eligible = [x for x in built["records"] if x["eligible"]]
         self.assertTrue(eligible)
         self.assertTrue(
