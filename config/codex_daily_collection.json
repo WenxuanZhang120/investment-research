@@ -4,6 +4,8 @@
   "timezone": "Asia/Shanghai",
   "suggested_run_time": "19:00",
   "collector": "codex_agent",
+  "investment_universe": "config/investment_universe.json",
+  "collection_budget": "config/collection_budget.json",
   "python_importer": "scripts/import_codex_collection.py",
   "python_pipeline": "scripts/run_daily_pipeline.py",
   "principles": {
@@ -21,8 +23,18 @@
       "dataset_kind": "market",
       "tool": "hithink-market-query",
       "frequency": "trading_day",
-      "query_template": "{trade_date}全部A股的股票代码、股票简称、股票市场类型、上市日期、上市状态、开盘价（不复权）、最高价（不复权）、最低价（不复权）、收盘价（不复权）、成交量、成交额、总市值、市盈率(pe,ttm)，按股票代码升序排列",
+      "query_template": "{trade_date}沪深主板A股，上市状态为正常上市、ST或*ST，排除创业板、科创板和北交所，查询股票代码、股票简称、股票市场类型、上市日期、上市状态、开盘价（不复权）、最高价（不复权）、最低价（不复权）、收盘价（不复权）、成交量、成交额、总市值、市盈率(pe,ttm)，按股票代码升序排列",
       "complete_pagination_required": true
+    },
+    {
+      "task_id": "nasdaq_sp500_etfs",
+      "display_name": "纳斯达克100与标普500相关ETF",
+      "dataset_kind": "etf",
+      "tool": "hithink-etf-selector",
+      "frequency": "trading_day",
+      "query_template": "{trade_date}在上海或深圳交易所上市、跟踪纳斯达克100指数或标普500指数的ETF，查询ETF代码、ETF简称、跟踪指数、基金类型、上市日期、上市状态、最新价、涨跌幅、成交量、成交额、基金规模、单位净值、溢价率、管理费率、托管费率、跟踪误差，按ETF代码升序排列",
+      "complete_pagination_required": true,
+      "separate_from_stock_financial_pipeline": true
     },
     {
       "task_id": "recent_announcements",
@@ -30,7 +42,7 @@
       "dataset_kind": "announcements",
       "tool": "announcement-search",
       "frequency": "daily",
-      "query_template": "A股 最近七日 股份回购公告",
+      "query_template": "沪深主板A股 最近七日 股份回购公告，排除创业板、科创板和北交所",
       "complete_pagination_required": false
     },
     {
@@ -39,7 +51,7 @@
       "dataset_kind": "news",
       "tool": "news-search",
       "frequency": "daily",
-      "query_template": "A股 最近七日 重要公司新闻",
+      "query_template": "沪深主板A股 最近七日 重要公司新闻，排除创业板、科创板和北交所",
       "complete_pagination_required": false
     },
     {

@@ -22,6 +22,7 @@ class CodexDailyCollectionConfigTests(unittest.TestCase):
             task_ids,
             {
                 "daily_a_share_market",
+                "nasdaq_sp500_etfs",
                 "recent_announcements",
                 "recent_company_news",
                 "financial_plan_follow_up",

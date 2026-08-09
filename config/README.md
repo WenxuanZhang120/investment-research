@@ -53,6 +53,8 @@
 
 `codex_daily_collection.json` 是面向 Codex 定时任务的中文友好采集清单。它只描述需要调用的工具、查询模板、频率和完整分页要求，不保存任何 Token、Cookie 或账户信息。Codex 取得响应后必须通过 `scripts/import_codex_collection.py` 进入 Raw；Python 日常配置本身继续保持 `external_collection_enabled = false`。
 
+`investment_universe.json` 固定当前可投资范围：个股只保留沪深主板，排除北交所、创业板和科创板；ETF 独立覆盖境内上市、跟踪纳斯达克 100 或标普 500 的产品。`collection_budget.json` 固定每日安全调用预算、缓冲额度和各数据流最大页数，达到额度后停止并从已保存页续跑。
+
 当前配置明确设置 `llm_calls_allowed = false` 和 `external_collection_enabled = false`。因此默认运行只读取现有仓库、检查采集计划状态、执行系统完成度审计和仓库验证，不会调用 iWencai。未来启用采集必须经过独立审查，并继续保证 Python 确定性运行、Raw 先保存和失败即停止。
 
 ## 修改规则
@@ -89,6 +91,8 @@ python3 scripts/parse_iwencai_fields.py \
 
 映射版本 3.2.0 加入 ROIC 和自由现金流所需的所得税费用、四类有息负债与购建长期资产现金支出。负债项目缺失时不得按零处理；只有来源明确返回零时才是零。
 
+`etf_field_mappings.json` 独立保存境内 ETF 代码、名称、跟踪指数、净值、规模、费率、溢价率和跟踪误差等字段。ETF 映射版本独立演进，不触发个股历史数据重算；ETF 也不进入个股财务指标或个股筛选表。
+
 ## `financial_metrics.json`
 
 保存派生财务比率的版本化公式、分子、分母和分母约束。当前仅包含可以从同一报告期直接计算且无需年化的五项比率。修改公式或口径必须提升 `metric_definition_version` 并增加测试；缺失输入、零分母或不符合正值约束时保留空值和原因状态，不得补零或静默删除。
@@ -111,7 +115,7 @@ python3 scripts/parse_iwencai_fields.py \
 
 ## 组合与筛选规则
 
-`portfolio_schema.json` 规定私密持仓、交易和投资卡的字段与允许状态；`portfolio_review_rules.json` 规定持仓复核类别的透明优先级；`screening_rules.json` 规定全市场初筛资格、因子方向、权重和研究优先级边界。
+`portfolio_schema.json` 规定私密持仓、交易和投资卡的字段与允许状态；`portfolio_review_rules.json` 规定持仓复核类别的透明优先级；`screening_rules.json` 规定当前可投资股票范围内的初筛资格、因子方向、权重和研究优先级边界。
 
 筛选配置的 `purpose` 固定为 `research_priority_only`。规则变化必须提升相应版本并重新生成批次。当前市场规则明确标记 `cross_industry_preliminary`，在行业数据就绪前不得把全市场百分位当作行业内可比结论。
 

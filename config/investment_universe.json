@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "universe_version": "1.0.0",
+  "stocks": {
+    "universe_id": "cn_sh_sz_main_board_a",
+    "display_name": "沪深主板A股",
+    "allowed_exchanges": ["SH", "SZ"],
+    "allowed_listing_statuses": ["正常上市", "ST", "*ST"],
+    "excluded_board_memberships": ["创业板", "科创板", "北交所"],
+    "excluded_code_prefixes": ["300", "301", "302", "688", "689"],
+    "minimum_expected_count": 3000
+  },
+  "etfs": {
+    "universe_id": "cn_listed_nasdaq_sp500_etfs",
+    "display_name": "境内上市纳斯达克100与标普500相关ETF",
+    "allowed_exchanges": ["SH", "SZ"],
+    "required_fund_type": "ETF",
+    "tracked_index_families": {
+      "nasdaq_100": ["纳斯达克100", "纳指100", "NASDAQ100"],
+      "sp_500": ["标普500", "SP500", "S&P500"]
+    },
+    "include_domestic_cross_border_qdii": true,
+    "include_overseas_listed_funds": false
+  }
+}

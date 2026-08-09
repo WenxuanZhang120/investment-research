@@ -89,6 +89,28 @@ class ValidateRepositoryTests(unittest.TestCase):
             self.assertTrue(any("portfolio/private/holdings.csv" in x for x in errors))
             self.assertTrue(any("something.private.json" in x for x in errors))
 
+    def test_detects_collection_budget_above_safe_limit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            source_config = REPOSITORY_ROOT / "config"
+            for name in (
+                "investment_universe.json",
+                "collection_budget.json",
+                "codex_daily_collection.json",
+                "system_completion_requirements.json",
+            ):
+                (root / "config" / name).write_text(
+                    (source_config / name).read_text(encoding="utf-8"),
+                    encoding="utf-8",
+                )
+            budget_path = root / "config/collection_budget.json"
+            budget = json.loads(budget_path.read_text(encoding="utf-8"))
+            budget["trading_day"]["financial_max_pages"] = 100
+            budget_path.write_text(json.dumps(budget), encoding="utf-8")
+            errors = validate_repository(root, tracked_paths=[])
+            self.assertTrue(any("exceed daily safe limit" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()
