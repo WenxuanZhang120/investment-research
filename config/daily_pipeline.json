@@ -1,0 +1,80 @@
+{
+  "pipeline_version": "1.1.0",
+  "purpose": "deterministic_daily_orchestration",
+  "llm_calls_allowed": false,
+  "external_collection_enabled": false,
+  "input_readiness": {
+    "schema_version": 1,
+    "financial_collection_plan": "config/financial_collection_plan.json",
+    "raw_root": "data/raw",
+    "mapping_file": "config/field_mappings.json",
+    "normalized_root": "data/normalized",
+    "derived_root": "data/derived",
+    "basic_metric_config": "config/financial_metrics.json",
+    "advanced_metric_config": "config/advanced_financial_metrics.json",
+    "normalization_job_ids": [
+      "2026q1_base_resume",
+      "2024fy_advanced_inputs",
+      "2025fy_advanced_supplement",
+      "2025q1_advanced_inputs",
+      "2026q1_advanced_supplement"
+    ],
+    "basic_metric_job_ids": [
+      "2026q1_base_resume"
+    ],
+    "advanced_metric_job_ids": [
+      "2024fy_advanced_inputs",
+      "2025fy_advanced_supplement",
+      "2025q1_advanced_inputs",
+      "2026q1_advanced_supplement"
+    ],
+    "timeout_seconds": 900
+  },
+  "stages": [
+    {
+      "stage": "status",
+      "steps": [
+        {
+          "step_id": "financial_collection_status",
+          "command": [
+            "scripts/run_financial_collection_plan.py",
+            "status"
+          ],
+          "timeout_seconds": 120
+        }
+      ]
+    },
+    {
+      "stage": "normalization",
+      "steps": []
+    },
+    {
+      "stage": "derivation",
+      "steps": []
+    },
+    {
+      "stage": "reporting",
+      "steps": [
+        {
+          "step_id": "system_completion_audit",
+          "command": [
+            "scripts/audit_system_completion.py"
+          ],
+          "timeout_seconds": 300
+        }
+      ]
+    },
+    {
+      "stage": "validation",
+      "steps": [
+        {
+          "step_id": "repository_integrity",
+          "command": [
+            "scripts/validate_repository.py"
+          ],
+          "timeout_seconds": 300
+        }
+      ]
+    }
+  ]
+}

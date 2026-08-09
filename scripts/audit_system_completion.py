@@ -14,6 +14,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.run_financial_collection_plan import inspect_plan, load_plan  # noqa: E402
+from scripts.repository_paths import repository_relative_path  # noqa: E402
 from scripts.validate_repository import validate_repository  # noqa: E402
 
 
@@ -97,7 +98,14 @@ def audit_system(
         coverage = item["manifest"].get("coverage", {})
         count = coverage.get("security_master_count", 0)
         if isinstance(count, int):
-            market_candidates.append((count, str(item["path"])))
+            market_candidates.append(
+                (
+                    count,
+                    repository_relative_path(
+                        item["path"], repository_root=root
+                    ),
+                )
+            )
     best_market = max(market_candidates, default=(0, None))
     market_ready = best_market[0] >= minimum["full_market_securities"]
     results.append(
@@ -117,7 +125,9 @@ def audit_system(
         for period in coverage.get("period_ends", []):
             if isinstance(security_count, int) and security_count > financial_periods.get(period, 0):
                 financial_periods[period] = security_count
-                financial_manifests[period] = str(item["path"])
+                financial_manifests[period] = repository_relative_path(
+                    item["path"], repository_root=root
+                )
     missing_financial = [
         period
         for period in requirements["required_financial_periods"]
@@ -226,7 +236,12 @@ def audit_system(
         _result(
             "privacy_safe_portfolio_management",
             portfolio_ready,
-            {"artifacts": [str(path.relative_to(root)) for path in portfolio_paths]},
+            {
+                "artifacts": [
+                    repository_relative_path(path, repository_root=root)
+                    for path in portfolio_paths
+                ]
+            },
             [] if portfolio_ready else ["portfolio artifact set is incomplete"],
         )
     )
@@ -260,7 +275,12 @@ def audit_system(
         _result(
             "structured_research_and_decision_journal",
             research_ready,
-            {"artifacts": [str(path.relative_to(root)) for path in research_paths]},
+            {
+                "artifacts": [
+                    repository_relative_path(path, repository_root=root)
+                    for path in research_paths
+                ]
+            },
             [] if research_ready else ["research workflow artifact set is incomplete"],
         )
     )

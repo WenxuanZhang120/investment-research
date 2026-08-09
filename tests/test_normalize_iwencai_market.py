@@ -153,7 +153,9 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
         )
 
     def test_builds_three_tables_with_field_lineage(self) -> None:
-        built = build_normalized_tables(self.snapshot)
+        built = build_normalized_tables(
+            self.snapshot, repository_root=self.root
+        )
 
         self.assertEqual(
             {name: len(records) for name, records in built["tables"].items()},
@@ -186,6 +188,7 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
         destination = normalize_snapshot(
             self.snapshot,
             normalized_root=normalized_root,
+            repository_root=self.root,
         )
 
         self.assertEqual(destination.name, "test-record-id")
@@ -198,7 +201,11 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
         self.assertTrue((destination / "valuation_snapshots.jsonl").is_file())
 
         with self.assertRaises(FileExistsError):
-            normalize_snapshot(self.snapshot, normalized_root=normalized_root)
+            normalize_snapshot(
+                self.snapshot,
+                normalized_root=normalized_root,
+                repository_root=self.root,
+            )
 
     def test_rejects_tampered_raw_payload(self) -> None:
         envelope = json.loads(self.snapshot.read_text(encoding="utf-8"))
@@ -208,14 +215,18 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
         self.snapshot.write_text(json.dumps(envelope, ensure_ascii=False), encoding="utf-8")
 
         with self.assertRaisesRegex(NormalizationError, "checksum"):
-            build_normalized_tables(self.snapshot)
+            build_normalized_tables(
+                self.snapshot, repository_root=self.root
+            )
 
     def test_observed_date_uses_project_timezone(self) -> None:
         envelope = json.loads(self.snapshot.read_text(encoding="utf-8"))
         envelope["metadata"]["fetched_at"] = "2026-08-07T17:30:00+00:00"
         self.snapshot.write_text(json.dumps(envelope, ensure_ascii=False), encoding="utf-8")
 
-        built = build_normalized_tables(self.snapshot)
+        built = build_normalized_tables(
+            self.snapshot, repository_root=self.root
+        )
 
         self.assertEqual(
             built["tables"]["security_master"][0]["observed_date"],
@@ -229,7 +240,9 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
         self.write_snapshot(self.payload)
 
         with self.assertRaisesRegex(NormalizationError, "incomplete valuation"):
-            build_normalized_tables(self.snapshot)
+            build_normalized_tables(
+                self.snapshot, repository_root=self.root
+            )
 
     def test_real_snapshot_produces_fifty_records_per_table(self) -> None:
         built = build_normalized_tables(REAL_SNAPSHOT)

@@ -16,7 +16,10 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.collect_iwencai_financials import collect_query  # noqa: E402
-from scripts.normalize_iwencai_financials import normalize_financial_snapshots  # noqa: E402
+from scripts.normalize_iwencai_financials import (  # noqa: E402
+    DEFAULT_NORMALIZED_ROOT,
+    normalize_financial_snapshots,
+)
 from scripts.save_raw_response import DEFAULT_RAW_ROOT  # noqa: E402
 
 
@@ -182,18 +185,25 @@ def normalize_job(
     job_id: str,
     *,
     raw_root: Path = DEFAULT_RAW_ROOT,
+    normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
 ) -> Path:
     job = _job(plan, job_id)
     status = inspect_job(job, raw_root=raw_root)
     if status["status"] != "complete" or status["errors"]:
         raise PlanError("job must be complete and error-free before normalization")
-    return normalize_financial_snapshots([Path(path) for path in status["snapshot_paths"]])
+    return normalize_financial_snapshots(
+        [Path(path) for path in status["snapshot_paths"]],
+        normalized_root=normalized_root,
+    )
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Run the versioned financial collection plan.")
     parser.add_argument("--plan", type=Path, default=DEFAULT_PLAN)
     parser.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
+    parser.add_argument(
+        "--normalized-root", type=Path, default=DEFAULT_NORMALIZED_ROOT
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
     status_parser = subparsers.add_parser("status")
     status_parser.add_argument("--job")
@@ -218,7 +228,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             result = collect_job(plan, args.job, raw_root=args.raw_root)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
-        destination = normalize_job(plan, args.job, raw_root=args.raw_root)
+        destination = normalize_job(
+            plan,
+            args.job,
+            raw_root=args.raw_root,
+            normalized_root=args.normalized_root,
+        )
         print(destination)
         return 0
     except (OSError, RuntimeError, TypeError, ValueError) as error:

@@ -17,6 +17,10 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from scripts.repository_paths import repository_relative_path  # noqa: E402
+
 DEFAULT_RULES = REPOSITORY_ROOT / "config" / "screening_rules.json"
 DEFAULT_DERIVED_ROOT = REPOSITORY_ROOT / "data" / "derived"
 SCREENER_VERSION = "1.0.0"
@@ -231,7 +235,12 @@ def build_screen(
     }
 
 
-def write_screen(built: Dict[str, Any], *, derived_root: Path = DEFAULT_DERIVED_ROOT) -> Path:
+def write_screen(
+    built: Dict[str, Any],
+    *,
+    derived_root: Path = DEFAULT_DERIVED_ROOT,
+    repository_root: Path = REPOSITORY_ROOT,
+) -> Path:
     observed_dates = [x["as_of_date"] for x in built["records"] if x["as_of_date"]]
     if not observed_dates:
         raise ScreeningError("screen has no as_of_date")
@@ -257,8 +266,12 @@ def write_screen(built: Dict[str, Any], *, derived_root: Path = DEFAULT_DERIVED_
             "screening_version": built["rules"]["screening_version"],
             "purpose": built["rules"]["purpose"],
             "cross_industry_preliminary": built["rules"]["cross_industry_preliminary"],
-            "source_market_manifest": str(built["market_manifest"]),
-            "source_metric_manifest": str(built["metric_manifest"]),
+            "source_market_manifest": repository_relative_path(
+                built["market_manifest"], repository_root=repository_root
+            ),
+            "source_metric_manifest": repository_relative_path(
+                built["metric_manifest"], repository_root=repository_root
+            ),
             "coverage": built["coverage"],
             "table": {
                 "logical_name": "market_research_queue",
@@ -290,6 +303,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         destination = write_screen(
             build_screen(args.market_manifest, args.metric_manifest, rules_path=args.rules),
             derived_root=args.derived_root,
+            repository_root=REPOSITORY_ROOT,
         )
     except (OSError, TypeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)

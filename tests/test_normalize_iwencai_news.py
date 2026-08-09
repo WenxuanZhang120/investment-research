@@ -48,7 +48,7 @@ class NormalizeIwencaiNewsTests(unittest.TestCase):
         )
 
     def test_builds_point_in_time_news_with_raw_lineage(self):
-        built = build_news(self.snapshot())
+        built = build_news(self.snapshot(), repository_root=self.root)
         item = built["records"][0]
         self.assertEqual(item["event_type"], "share_repurchase")
         self.assertEqual(item["publisher"], "测试媒体")
@@ -57,7 +57,7 @@ class NormalizeIwencaiNewsTests(unittest.TestCase):
         self.assertTrue(item["raw_item"])
 
     def test_writes_hashed_immutable_bundle(self):
-        built = build_news(self.snapshot())
+        built = build_news(self.snapshot(), repository_root=self.root)
         destination = write_bundle(built, normalized_root=self.root / "normalized")
         manifest = json.loads((destination / "manifest.json").read_text())
         content = (destination / "news_items.jsonl").read_bytes()

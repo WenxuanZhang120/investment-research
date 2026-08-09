@@ -79,7 +79,7 @@ class AuditIwencaiResponseTests(unittest.TestCase):
         )
 
     def test_audits_real_response_shape(self) -> None:
-        report = audit_snapshot(self.snapshot_path)
+        report = audit_snapshot(self.snapshot_path, repository_root=self.root)
 
         self.assertEqual(report["summary"]["column_count"], 3)
         self.assertEqual(report["summary"]["mapped_column_count"], 2)
@@ -108,7 +108,7 @@ class AuditIwencaiResponseTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        report = audit_snapshot(self.snapshot_path)
+        report = audit_snapshot(self.snapshot_path, repository_root=self.root)
 
         self.assertEqual(report["summary"]["table_component_count"], 1)
         self.assertEqual(report["summary"]["column_count"], 3)
@@ -135,7 +135,7 @@ class AuditIwencaiResponseTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        report = audit_snapshot(self.snapshot_path)
+        report = audit_snapshot(self.snapshot_path, repository_root=self.root)
 
         self.assertEqual(report["summary"]["table_component_count"], 1)
         self.assertEqual(report["summary"]["column_count"], 5)

@@ -58,7 +58,7 @@ class NormalizeIwencaiAnnouncementsTests(unittest.TestCase):
         )
 
     def test_builds_auditable_classified_events(self):
-        built = build_events(self.snapshot())
+        built = build_events(self.snapshot(), repository_root=self.root)
         self.assertEqual(len(built["records"]), 2)
         self.assertEqual(
             {x["event_type"] for x in built["records"]},
@@ -71,7 +71,7 @@ class NormalizeIwencaiAnnouncementsTests(unittest.TestCase):
         self.assertIsNone(repurchase["security_code"])
 
     def test_writes_hashed_immutable_bundle(self):
-        built = build_events(self.snapshot())
+        built = build_events(self.snapshot(), repository_root=self.root)
         destination = write_bundle(built, normalized_root=self.root / "normalized")
         manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
         content = (destination / "events.jsonl").read_bytes()
@@ -86,7 +86,7 @@ class NormalizeIwencaiAnnouncementsTests(unittest.TestCase):
         document["payload"]["data"][0]["title"] = "tampered"
         path.write_text(json.dumps(document), encoding="utf-8")
         with self.assertRaisesRegex(AnnouncementNormalizationError, "checksum"):
-            build_events(path)
+            build_events(path, repository_root=self.root)
 
     def test_management_change_taxonomy_is_explicit(self):
         event_type, keywords = _classify(

@@ -1,0 +1,40 @@
+name: Daily offline research pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 18:00 Asia/Shanghai, Monday through Friday (GitHub cron uses UTC).
+    - cron: "0 10 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-offline-research-pipeline
+  cancel-in-progress: false
+
+jobs:
+  run-offline-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Run deterministic offline pipeline
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: >-
+          python3 scripts/run_daily_pipeline.py
+          --reports-root reports/daily/action-runs
+      - name: Upload portable pipeline audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-offline-pipeline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/daily/action-runs/
+          if-no-files-found: warn
+          retention-days: 30
