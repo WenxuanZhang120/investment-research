@@ -36,7 +36,7 @@
 
 ## `daily_pipeline.json`
 
-保存无 LLM 日常流水线的版本化执行顺序。阶段固定为状态检查、标准化、衍生计算、报告和最终验证。
+保存无 LLM 的 Python 内部处理流水线版本。阶段固定为状态检查、标准化、衍生计算、报告和最终验证；Codex 外层采集不在这个配置中执行。
 
 `input_readiness` 将财务采集任务显式分为基础指标输入和高级指标输入。运行前，`scripts/resolve_daily_pipeline.py` 只读取本地 Raw 快照、标准化清单和衍生清单，并按完整分页集合、原始记录 ID、映射版本和计算版本判断是否需要处理：
 
@@ -46,6 +46,12 @@
 - 相同输入和处理版本已经存在时，标记为 `up_to_date`，不重复覆盖。
 
 解析出来的路径和执行命令只使用仓库相对路径。配置中的任务 ID 必须来自版本化财务采集计划，不能通过文件日期猜测输入身份。
+
+`research_readiness` 保存公告／新闻查询的精确路由、事件分类配置、筛选规则、最低全市场覆盖和输出根目录。查询路由避免把财务、行情、公告和新闻 Raw 按字段外观误分类；相同 Raw、标准化器、分类版本、报告器和筛选规则组合只执行一次。所有动态步骤都使用仓库相对路径，且不发起外部采集。
+
+## Codex 每日采集计划
+
+`codex_daily_collection.json` 是面向 Codex 定时任务的中文友好采集清单。它只描述需要调用的工具、查询模板、频率和完整分页要求，不保存任何 Token、Cookie 或账户信息。Codex 取得响应后必须通过 `scripts/import_codex_collection.py` 进入 Raw；Python 日常配置本身继续保持 `external_collection_enabled = false`。
 
 当前配置明确设置 `llm_calls_allowed = false` 和 `external_collection_enabled = false`。因此默认运行只读取现有仓库、检查采集计划状态、执行系统完成度审计和仓库验证，不会调用 iWencai。未来启用采集必须经过独立审查，并继续保证 Python 确定性运行、Raw 先保存和失败即停止。
 
@@ -95,7 +101,7 @@ python3 scripts/parse_iwencai_fields.py \
 
 保存人工财务采集入口的安全边界，包括允许任务白名单、凭据环境变量名、逐任务确认前缀、单次页数预算和请求超时。安全配置不保存密钥值。
 
-`preflight` 只读取本地计划和 Raw 状态，不需要凭据，也不发起网络请求。真正采集必须同时满足：任务属于白名单、已有分页状态无错误、任务尚未完成、下一页可安全推导、存在 `IWENCAI_API_KEY`，并且确认文本精确等于 `COLLECT:<job_id>`。单次最多保存 60 页；达到预算但尚未结束时保留当前 Raw 段，下次从下一页继续。
+旧受控采集器的 `preflight` 仍可只读检查本地计划和 Raw 状态，但依赖 `IWENCAI_API_KEY` 的网络采集入口目前停用，不属于 Codex 每日任务。相关代码暂时保留用于历史响应审计，后续只有在确认获得合法、可用的接口凭据后才重新评估。
 
 ## `event_taxonomy.json`
 

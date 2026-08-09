@@ -32,6 +32,16 @@ class AuditSystemCompletionTests(unittest.TestCase):
             self.assertTrue(advanced["gaps"])
             self.assertTrue(all("period missing" in gap for gap in advanced["gaps"]))
 
+    def test_monitoring_completion_uses_deduplicated_records_and_audited_reports(self):
+        result = audit_system(REPOSITORY_ROOT)
+        by_name = {item["requirement"]: item for item in result["results"]}
+        monitoring = by_name["announcement_and_news_monitoring"]
+        self.assertTrue(monitoring["achieved"])
+        self.assertEqual(monitoring["evidence"]["real_event_count"], 2)
+        self.assertEqual(monitoring["evidence"]["real_news_count"], 5)
+        self.assertTrue(monitoring["evidence"]["event_report_manifests"])
+        self.assertTrue(monitoring["evidence"]["news_report_manifests"])
+
 
 if __name__ == "__main__":
     unittest.main()

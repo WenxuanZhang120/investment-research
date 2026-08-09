@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -45,6 +46,79 @@ def _result(requirement: str, achieved: bool, evidence: Any, gaps: List[str]) ->
         "evidence": evidence,
         "gaps": gaps,
     }
+
+
+def _unique_normalized_records(
+    manifests: Sequence[Dict[str, Any]],
+    *,
+    logical_name: str,
+    identity_field: str,
+) -> int:
+    """Count logical records once across reprocessing/versioned bundles."""
+    identities = set()
+    for item in manifests:
+        table = item["manifest"].get("table", {})
+        if table.get("logical_name") != logical_name:
+            continue
+        path = item["path"].parent / table.get("file", "")
+        if not path.is_file():
+            continue
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                identity = record.get(identity_field)
+                if isinstance(identity, str) and identity:
+                    identities.add(identity)
+    return len(identities)
+
+
+def _monitoring_report_evidence(
+    root: Path,
+    *,
+    kind: str,
+) -> Dict[str, Any]:
+    manifests = []
+    errors = []
+    for path in sorted(
+        (root / "reports/daily/monitoring" / kind).glob("*/*/*/*/manifest.json")
+    ):
+        try:
+            document = _json(path)
+            report = document.get("report")
+            sources = document.get("source_manifests")
+            if (
+                document.get("kind") != kind
+                or document.get("investment_judgment_included") is not False
+                or document.get("automatic_trading_enabled") is not False
+                or not isinstance(report, dict)
+                or not isinstance(sources, list)
+                or not sources
+            ):
+                raise ValueError("report boundary or lineage is incomplete")
+            report_path = path.parent / report["file"]
+            if (
+                not report_path.is_file()
+                or hashlib.sha256(report_path.read_bytes()).hexdigest()
+                != report.get("sha256")
+            ):
+                raise ValueError("report file hash mismatch")
+            for source in sources:
+                source_path = root / source["path"]
+                repository_relative_path(source_path, repository_root=root)
+                if (
+                    not source_path.is_file()
+                    or hashlib.sha256(source_path.read_bytes()).hexdigest()
+                    != source.get("sha256")
+                ):
+                    raise ValueError("source manifest hash mismatch")
+            manifests.append(repository_relative_path(path, repository_root=root))
+        except (OSError, KeyError, TypeError, ValueError) as error:
+            errors.append(
+                f"{repository_relative_path(path, repository_root=root)}: {error}"
+            )
+    return {"manifests": manifests, "errors": errors}
 
 
 def audit_system(
@@ -180,34 +254,38 @@ def audit_system(
         )
     )
 
-    event_records = 0
-    news_records = 0
-    for item in normalized:
-        table = item["manifest"].get("table", {})
-        if table.get("logical_name") == "events":
-            event_records += table.get("record_count", 0)
-        elif table.get("logical_name") == "news_items":
-            news_records += table.get("record_count", 0)
+    event_records = _unique_normalized_records(
+        normalized, logical_name="events", identity_field="event_id"
+    )
+    news_records = _unique_normalized_records(
+        normalized, logical_name="news_items", identity_field="news_id"
+    )
     taxonomy = _json(root / "config/event_taxonomy.json")
     taxonomy_types = {rule["event_type"] for rule in taxonomy["rules"]}
     missing_event_types = sorted(
         set(requirements["required_event_types"]) - taxonomy_types
     )
-    news_artifacts = [
-        root / "scripts/collect_iwencai_news.py",
-        root / "scripts/normalize_iwencai_news.py",
-        root / "scripts/generate_daily_news_report.py",
-        root / "reports/daily/2026-08-08-financial-news.md",
-    ]
-    news_ready = news_records > 0 and all(path.is_file() for path in news_artifacts)
+    event_reports = _monitoring_report_evidence(root, kind="events")
+    news_reports = _monitoring_report_evidence(root, kind="news")
+    event_reports_ready = bool(event_reports["manifests"]) and not event_reports["errors"]
+    news_ready = (
+        news_records > 0
+        and bool(news_reports["manifests"])
+        and not news_reports["errors"]
+    )
     event_ready = (
         event_records >= minimum["real_events"]
         and not missing_event_types
+        and event_reports_ready
         and news_ready
     )
     event_gaps = [f"event taxonomy missing: {name}" for name in missing_event_types]
+    if not event_reports_ready:
+        event_gaps.append("audited event monitoring report evidence is missing")
     if not news_ready:
-        event_gaps.append("real normalized news monitoring evidence is missing")
+        event_gaps.append("audited normalized news monitoring evidence is missing")
+    event_gaps.extend(event_reports["errors"])
+    event_gaps.extend(news_reports["errors"])
     results.append(
         _result(
             "announcement_and_news_monitoring",
@@ -217,7 +295,8 @@ def audit_system(
                 "real_news_count": news_records,
                 "taxonomy_version": taxonomy.get("taxonomy_version"),
                 "event_types": sorted(taxonomy_types),
-                "news_collector": news_ready,
+                "event_report_manifests": event_reports["manifests"],
+                "news_report_manifests": news_reports["manifests"],
             },
             event_gaps,
         )
