@@ -30,7 +30,7 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
 from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
-NORMALIZER_VERSION = "1.2.0"
+NORMALIZER_VERSION = "1.3.0"
 RECORD_SCHEMA_VERSION = 1
 BUNDLE_SCHEMA_VERSION = 2
 DEFAULT_NORMALIZED_ROOT = REPOSITORY_ROOT / "data" / "normalized"
@@ -471,6 +471,7 @@ def build_financial_tables(
         repository_root,
     )
     tables = {table_name: [] for table_name in TABLE_FILES}
+    missing_report_rows: List[Dict[str, Any]] = []
 
     for row_index, row in enumerate(rows):
         if not isinstance(row, dict):
@@ -497,6 +498,21 @@ def build_financial_tables(
                 row,
                 period_group["report_period_label"],
             )
+            fact_presence = [
+                _row_value(row, descriptor)[0]
+                for descriptor in period_group["facts"]
+            ]
+            if not filing_present and not label_present and not any(fact_presence):
+                missing_report_rows.append(
+                    {
+                        **common_context,
+                        "security_code": security_code,
+                        "security_name": security_name,
+                        "period_end": period_end,
+                        "reason": "report_not_present_in_source",
+                    }
+                )
+                continue
             if not filing_present or not label_present:
                 raise FinancialNormalizationError(
                     f"{security_code} {period_end} is missing report metadata"
@@ -610,6 +626,7 @@ def build_financial_tables(
         "page": page,
         "limit": limit,
         "has_more": has_more,
+        "missing_report_rows": missing_report_rows,
     }
 
 
@@ -801,6 +818,15 @@ def build_financial_batch(
             raise FinancialNormalizationError(
                 "financial query contains duplicate security-period rows across pages"
             )
+        missing_report_keys = [
+            (row["security_code"], row["period_end"])
+            for part in ordered_parts
+            for row in part["missing_report_rows"]
+        ]
+        if len(missing_report_keys) != len(set(missing_report_keys)):
+            raise FinancialNormalizationError(
+                "financial query contains duplicate missing-report rows across pages"
+            )
         query_coverage.append(
             {
                 "query": query,
@@ -842,6 +868,18 @@ def build_financial_batch(
     raw_record_ids = [record["record_id"] for record in raw_records]
     reports = tables["financial_reports"]
     facts = tables["financial_facts"]
+    missing_report_rows = sorted(
+        (
+            row
+            for part in parts
+            for row in part["missing_report_rows"]
+        ),
+        key=lambda row: (
+            row["security_code"],
+            row["period_end"],
+            row["raw_record_id"],
+        ),
+    )
     statement_counts = {
         statement_type: sum(
             fact["statement_type"] == statement_type for fact in facts
@@ -875,6 +913,14 @@ def build_financial_batch(
                 key=lambda item: (item["period_ends"], item["query"]),
             ),
             "security_count": len({record["security_code"] for record in reports}),
+            "source_security_count": len(
+                {
+                    record["security_code"]
+                    for record in [*reports, *missing_report_rows]
+                }
+            ),
+            "missing_report_row_count": len(missing_report_rows),
+            "missing_report_rows": missing_report_rows,
             "period_ends": sorted({record["period_end"] for record in reports}),
             "report_types": sorted({record["report_type"] for record in reports}),
             "financial_report_count": len(reports),

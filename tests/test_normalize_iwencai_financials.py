@@ -180,7 +180,7 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
         manifest = json.loads(
             (destination / "manifest.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(manifest["normalizer_version"], "1.2.0")
+        self.assertEqual(manifest["normalizer_version"], "1.3.0")
         self.assertEqual(manifest["bundle_schema_version"], 2)
         self.assertEqual(manifest["mapping_version"], "3.2.0")
         self.assertEqual(
@@ -226,6 +226,37 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
             "later than fetched_at",
         ):
             build_financial_tables(snapshot, repository_root=self.root)
+
+    def test_row_without_any_period_data_is_recorded_without_fabrication(self) -> None:
+        document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        row = document["payload"]["datas"][0]
+        for key in list(row):
+            if "[20251231]" in key:
+                del row[key]
+        document["metadata"]["payload_sha256"] = hashlib.sha256(
+            canonical_payload(document["payload"])
+        ).hexdigest()
+        snapshot = self.root / "missing-report.json"
+        snapshot.write_text(
+            json.dumps(document, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        built = build_financial_batch([snapshot], repository_root=self.root)
+
+        self.assertEqual(built["coverage"]["source_security_count"], 3)
+        self.assertEqual(built["coverage"]["security_count"], 2)
+        self.assertEqual(built["coverage"]["missing_report_row_count"], 1)
+        missing = built["coverage"]["missing_report_rows"][0]
+        self.assertEqual(missing["security_code"], row["股票代码"])
+        self.assertEqual(missing["period_end"], "2025-12-31")
+        self.assertEqual(missing["reason"], "report_not_present_in_source")
+        self.assertFalse(
+            any(
+                report["security_code"] == row["股票代码"]
+                for report in built["tables"]["financial_reports"]
+            )
+        )
 
 
 if __name__ == "__main__":
