@@ -27,6 +27,7 @@ from scripts.normalize_iwencai_announcements import (  # noqa: E402
     _taxonomy,
     _timestamp,
 )
+from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
 NORMALIZER_VERSION = "1.1.0"
@@ -46,6 +47,7 @@ def build_news(
     snapshot_path: Path,
     *,
     taxonomy_path: Path = DEFAULT_TAXONOMY,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     snapshot_path = Path(snapshot_path)
     metadata, payload = _load_snapshot(snapshot_path)
@@ -88,7 +90,9 @@ def build_news(
                 "query": metadata["query"],
                 "fetched_at": metadata["fetched_at"],
                 "raw_record_id": metadata["record_id"],
-                "raw_snapshot": str(snapshot_path),
+                "raw_snapshot": repository_relative_path(
+                    snapshot_path, repository_root=repository_root
+                ),
                 "normalizer_version": NORMALIZER_VERSION,
                 "taxonomy_version": taxonomy["taxonomy_version"],
                 "raw_item": item,
@@ -178,7 +182,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
     try:
         destination = write_bundle(
-            build_news(args.snapshot, taxonomy_path=args.taxonomy),
+            build_news(
+                args.snapshot,
+                taxonomy_path=args.taxonomy,
+                repository_root=REPOSITORY_ROOT,
+            ),
             normalized_root=args.normalized_root,
         )
     except (OSError, TypeError, ValueError) as error:

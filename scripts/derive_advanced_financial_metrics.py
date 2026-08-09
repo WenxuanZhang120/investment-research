@@ -20,22 +20,35 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.derive_financial_metrics import _load_latest_facts, _read_json  # noqa: E402
+from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
 DEFAULT_CONFIG = REPOSITORY_ROOT / "config" / "advanced_financial_metrics.json"
 DEFAULT_DERIVED_ROOT = REPOSITORY_ROOT / "data" / "derived"
-CALCULATOR_VERSION = "1.0.0"
+CALCULATOR_VERSION = "1.1.0"
+RECORD_SCHEMA_VERSION = 2
+SUPPORTED_PERIOD_ENDS = {
+    (3, 31),
+    (6, 30),
+    (9, 30),
+    (12, 31),
+}
 DEBT_FIELDS = (
     "short_term_borrowings",
     "non_current_liabilities_due_within_one_year",
     "long_term_borrowings",
     "bonds_payable",
 )
+INVESTED_CAPITAL_FIELDS = ("total_equity", "monetary_funds", *DEBT_FIELDS)
 
 
-def _prior_period(period_end: str) -> str:
+def _period_context(period_end: str) -> Tuple[str, str]:
     parsed = date.fromisoformat(period_end)
-    return parsed.replace(year=parsed.year - 1).isoformat()
+    if (parsed.month, parsed.day) not in SUPPORTED_PERIOD_ENDS:
+        raise ValueError(f"unsupported financial period_end: {period_end}")
+    prior_comparable = parsed.replace(year=parsed.year - 1).isoformat()
+    opening_balance = date(parsed.year - 1, 12, 31).isoformat()
+    return prior_comparable, opening_balance
 
 
 def _value(facts: Dict[str, Dict[str, Any]], field: str) -> Optional[float]:
@@ -61,13 +74,13 @@ def _growth(current: Optional[float], prior: Optional[float]) -> Tuple[Optional[
 def _average_ratio(
     numerator: Optional[float],
     current_base: Optional[float],
-    prior_base: Optional[float],
+    opening_base: Optional[float],
 ) -> Tuple[Optional[float], str]:
     if numerator is None or current_base is None:
         return None, "missing_current_inputs"
-    if prior_base is None:
-        return None, "missing_prior_inputs"
-    denominator = (current_base + prior_base) / 2
+    if opening_base is None:
+        return None, "missing_opening_inputs"
+    denominator = (current_base + opening_base) / 2
     if denominator == 0:
         return None, "zero_denominator"
     return round(numerator / denominator, 12), "calculated"
@@ -84,7 +97,7 @@ def _invested_capital(facts: Dict[str, Dict[str, Any]]) -> Optional[float]:
 
 def _roic(
     current: Dict[str, Dict[str, Any]],
-    prior: Dict[str, Dict[str, Any]],
+    opening: Dict[str, Dict[str, Any]],
 ) -> Tuple[Optional[float], str]:
     operating_profit = _value(current, "operating_profit")
     tax = _value(current, "income_tax_expense")
@@ -92,17 +105,40 @@ def _roic(
     current_capital = _invested_capital(current)
     if any(value is None for value in (operating_profit, tax, total_profit, current_capital)):
         return None, "missing_current_inputs"
-    prior_capital = _invested_capital(prior)
-    if prior_capital is None:
-        return None, "missing_prior_inputs"
+    opening_capital = _invested_capital(opening)
+    if opening_capital is None:
+        return None, "missing_opening_inputs"
     if total_profit == 0:
         return None, "zero_tax_rate_denominator"
-    average_capital = (current_capital + prior_capital) / 2
+    average_capital = (current_capital + opening_capital) / 2
     if average_capital == 0:
         return None, "zero_denominator"
     effective_tax_rate = tax / total_profit
     nopat = operating_profit * (1 - effective_tax_rate)
     return round(nopat / average_capital, 12), "calculated"
+
+
+def _facts(
+    period_facts: Dict[str, Dict[str, Any]],
+    fields: Sequence[str],
+) -> List[Dict[str, Any]]:
+    return [period_facts[field] for field in fields if field in period_facts]
+
+
+def _available_from(
+    identity: Dict[str, Any],
+    input_facts: Sequence[Dict[str, Any]],
+) -> str:
+    values = [
+        fact.get("available_from")
+        for fact in input_facts
+        if isinstance(fact.get("available_from"), str)
+        and fact.get("available_from")
+    ]
+    fallback = identity.get("available_from")
+    if not isinstance(fallback, str) or not fallback:
+        raise ValueError("financial fact identity must contain available_from")
+    return max(values, default=fallback)
 
 
 def calculate_records(
@@ -116,42 +152,92 @@ def calculate_records(
         grouped.setdefault((code, period_end), {})[field] = fact
     records = []
     for (code, period_end), current in sorted(grouped.items()):
-        prior_end = _prior_period(period_end)
-        prior = grouped.get((code, prior_end), {})
+        prior_comparable_end, opening_balance_end = _period_context(period_end)
+        prior_comparable = grouped.get((code, prior_comparable_end), {})
+        opening_balance = grouped.get((code, opening_balance_end), {})
         identity = next(iter(current.values()))
         calculations = {
-            "revenue_growth_yoy": _growth(
-                _value(current, "revenue"), _value(prior, "revenue")
-            ),
-            "net_income_growth_yoy": _growth(
-                _value(current, "net_income_parent"),
-                _value(prior, "net_income_parent"),
-            ),
-            "roe_parent_average": _average_ratio(
-                _value(current, "net_income_parent"),
-                _value(current, "equity_parent"),
-                _value(prior, "equity_parent"),
-            ),
-            "roic_average": _roic(current, prior),
+            "revenue_growth_yoy": {
+                "result": _growth(
+                    _value(current, "revenue"),
+                    _value(prior_comparable, "revenue"),
+                ),
+                "prior_comparable_period_end": prior_comparable_end,
+                "opening_balance_period_end": None,
+                "input_facts": _facts(current, ("revenue",))
+                + _facts(prior_comparable, ("revenue",)),
+            },
+            "net_income_growth_yoy": {
+                "result": _growth(
+                    _value(current, "net_income_parent"),
+                    _value(prior_comparable, "net_income_parent"),
+                ),
+                "prior_comparable_period_end": prior_comparable_end,
+                "opening_balance_period_end": None,
+                "input_facts": _facts(current, ("net_income_parent",))
+                + _facts(prior_comparable, ("net_income_parent",)),
+            },
+            "roe_parent_average": {
+                "result": _average_ratio(
+                    _value(current, "net_income_parent"),
+                    _value(current, "equity_parent"),
+                    _value(opening_balance, "equity_parent"),
+                ),
+                "prior_comparable_period_end": None,
+                "opening_balance_period_end": opening_balance_end,
+                "input_facts": _facts(
+                    current, ("net_income_parent", "equity_parent")
+                )
+                + _facts(opening_balance, ("equity_parent",)),
+            },
+            "roic_average": {
+                "result": _roic(current, opening_balance),
+                "prior_comparable_period_end": None,
+                "opening_balance_period_end": opening_balance_end,
+                "input_facts": _facts(
+                    current,
+                    (
+                        "operating_profit",
+                        "income_tax_expense",
+                        "total_profit",
+                        *INVESTED_CAPITAL_FIELDS,
+                    ),
+                )
+                + _facts(opening_balance, INVESTED_CAPITAL_FIELDS),
+            },
         }
         cfo = _value(current, "net_cash_flow_operating")
         capex = _value(current, "capital_expenditure_cash")
-        calculations["free_cash_flow"] = (
-            (round(cfo - capex, 6), "calculated")
-            if cfo is not None and capex is not None
-            else (None, "missing_current_inputs")
-        )
-        for name, (value, status) in calculations.items():
+        calculations["free_cash_flow"] = {
+            "result": (
+                (round(cfo - capex, 6), "calculated")
+                if cfo is not None and capex is not None
+                else (None, "missing_current_inputs")
+            ),
+            "prior_comparable_period_end": None,
+            "opening_balance_period_end": None,
+            "input_facts": _facts(
+                current,
+                ("net_cash_flow_operating", "capital_expenditure_cash"),
+            ),
+        }
+        for name, calculation in calculations.items():
+            value, status = calculation["result"]
             records.append(
                 {
-                    "record_schema_version": 1,
+                    "record_schema_version": RECORD_SCHEMA_VERSION,
                     "security_code": code,
                     "security_name": identity["security_name"],
                     "period_end": period_end,
-                    "prior_comparable_period_end": prior_end,
-                    "available_from": max(
-                        [fact["available_from"] for fact in current.values()]
-                        + [fact["available_from"] for fact in prior.values()]
+                    "prior_comparable_period_end": calculation[
+                        "prior_comparable_period_end"
+                    ],
+                    "opening_balance_period_end": calculation[
+                        "opening_balance_period_end"
+                    ],
+                    "available_from": _available_from(
+                        identity,
+                        calculation["input_facts"],
                     ),
                     "metric_name": name,
                     "value": value,
@@ -170,6 +256,7 @@ def build_advanced_metrics(
     manifest_paths: Sequence[Path],
     *,
     config_path: Path = DEFAULT_CONFIG,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     config = _read_json(config_path)
     latest: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
@@ -197,13 +284,21 @@ def build_advanced_metrics(
         "bundle_id": hashlib.sha256(identity).hexdigest()[:20],
         "records": records,
         "source_bundle_ids": bundle_ids,
-        "source_manifest_paths": [str(path) for path in manifest_paths],
+        "source_manifest_paths": [
+            repository_relative_path(path, repository_root=repository_root)
+            for path in manifest_paths
+        ],
         "fetched_at_start": min(fetched_starts),
         "definition_version": config["metric_definition_version"],
     }
 
 
-def write_bundle(built: Dict[str, Any], *, derived_root: Path = DEFAULT_DERIVED_ROOT) -> Path:
+def write_bundle(
+    built: Dict[str, Any],
+    *,
+    derived_root: Path = DEFAULT_DERIVED_ROOT,
+    repository_root: Path = REPOSITORY_ROOT,
+) -> Path:
     fetched = datetime.fromisoformat(built["fetched_at_start"])
     destination = derived_root.joinpath(
         "runs", "iwencai", fetched.strftime("%Y"), fetched.strftime("%m"),
@@ -228,7 +323,10 @@ def write_bundle(built: Dict[str, Any], *, derived_root: Path = DEFAULT_DERIVED_
             "calculator_version": CALCULATOR_VERSION,
             "metric_definition_version": built["definition_version"],
             "source_financial_bundle_ids": built["source_bundle_ids"],
-            "source_financial_manifests": built["source_manifest_paths"],
+            "source_financial_manifests": [
+                repository_relative_path(path, repository_root=repository_root)
+                for path in built["source_manifest_paths"]
+            ],
             "coverage": {"record_count": len(built["records"]), "status_counts": statuses},
             "table": {
                 "logical_name": "advanced_financial_metrics",
@@ -257,8 +355,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
     try:
         destination = write_bundle(
-            build_advanced_metrics(args.manifests, config_path=args.config),
+            build_advanced_metrics(
+                args.manifests,
+                config_path=args.config,
+                repository_root=REPOSITORY_ROOT,
+            ),
             derived_root=args.derived_root,
+            repository_root=REPOSITORY_ROOT,
         )
     except (OSError, TypeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)

@@ -27,6 +27,7 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
     load_field_mappings,
     parse_field_name,
 )
+from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
 NORMALIZER_VERSION = "1.2.0"
@@ -75,13 +76,6 @@ def _canonical_payload(payload: Any) -> bytes:
         separators=(",", ":"),
         sort_keys=True,
     ).encode("utf-8")
-
-
-def _display_path(path: Path) -> str:
-    try:
-        return path.resolve().relative_to(REPOSITORY_ROOT).as_posix()
-    except ValueError:
-        return str(path.resolve())
 
 
 def _parse_timestamp(value: Any) -> datetime:
@@ -357,13 +351,16 @@ def _record_context(
     metadata: Dict[str, Any],
     snapshot_path: Path,
     mapping_version: str,
+    repository_root: Path,
 ) -> Dict[str, Any]:
     return {
         "record_schema_version": RECORD_SCHEMA_VERSION,
         "source": metadata["source"],
         "fetched_at": metadata["fetched_at"],
         "raw_record_id": metadata["record_id"],
-        "raw_snapshot": _display_path(snapshot_path),
+        "raw_snapshot": repository_relative_path(
+            snapshot_path, repository_root=repository_root
+        ),
         "normalizer_version": NORMALIZER_VERSION,
         "mapping_version": mapping_version,
     }
@@ -391,6 +388,7 @@ def build_financial_tables(
     snapshot_path: Path,
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     """Build financial report metadata and long-form facts for one snapshot."""
     metadata, payload = _load_envelope(snapshot_path)
@@ -466,7 +464,12 @@ def build_financial_tables(
         raise FinancialNormalizationError("has_more must be boolean when present")
 
     fetched_at = _parse_timestamp(metadata["fetched_at"])
-    common_context = _record_context(metadata, snapshot_path, mapping_version)
+    common_context = _record_context(
+        metadata,
+        snapshot_path,
+        mapping_version,
+        repository_root,
+    )
     tables = {table_name: [] for table_name in TABLE_FILES}
 
     for row_index, row in enumerate(rows):
@@ -720,6 +723,7 @@ def build_financial_batch(
     snapshot_paths: Sequence[Path],
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     """Combine independent financial-period snapshots into one bundle."""
     if not snapshot_paths:
@@ -729,7 +733,12 @@ def build_financial_batch(
         raise FinancialNormalizationError("snapshot paths must be unique")
 
     parts = [
-        build_financial_tables(path, mapping_file=mapping_file) for path in paths
+        build_financial_tables(
+            path,
+            mapping_file=mapping_file,
+            repository_root=repository_root,
+        )
+        for path in paths
     ]
     parts.sort(key=lambda part: _parse_timestamp(part["metadata"]["fetched_at"]))
     if len({part["metadata"]["source"] for part in parts}) != 1:
@@ -816,7 +825,9 @@ def build_financial_batch(
         {
             "record_id": part["metadata"]["record_id"],
             "payload_sha256": part["metadata"]["payload_sha256"],
-            "snapshot": _display_path(part["snapshot_path"]),
+            "snapshot": repository_relative_path(
+                part["snapshot_path"], repository_root=repository_root
+            ),
             "query": part["metadata"].get("query"),
             "fetched_at": part["metadata"]["fetched_at"],
             "period_ends": part["period_ends"],
@@ -993,8 +1004,13 @@ def normalize_financial_snapshots(
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
     normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Path:
-    built = build_financial_batch(snapshot_paths, mapping_file=mapping_file)
+    built = build_financial_batch(
+        snapshot_paths,
+        mapping_file=mapping_file,
+        repository_root=repository_root,
+    )
     return write_financial_bundle(built, normalized_root=normalized_root)
 
 

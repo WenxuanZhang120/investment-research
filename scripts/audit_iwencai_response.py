@@ -18,6 +18,7 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
     load_field_mappings,
     parse_field_name,
 )
+from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
 def extract_table_components(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -126,17 +127,11 @@ def _reported_total(meta: Dict[str, Any]) -> Optional[int]:
     return None
 
 
-def _display_path(path: Path) -> str:
-    try:
-        return path.resolve().relative_to(REPOSITORY_ROOT).as_posix()
-    except ValueError:
-        return str(path.resolve())
-
-
 def audit_snapshot(
     snapshot_path: Path,
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     """Return a structured field coverage report for one saved snapshot."""
     envelope = json.loads(snapshot_path.read_text(encoding="utf-8"))
@@ -194,7 +189,9 @@ def audit_snapshot(
         column["mapping_status"] == "mapped" for column in audited_columns
     )
     return {
-        "raw_snapshot": _display_path(snapshot_path),
+        "raw_snapshot": repository_relative_path(
+            snapshot_path, repository_root=repository_root
+        ),
         "source": metadata.get("source"),
         "query": metadata.get("query"),
         "fetched_at": metadata.get("fetched_at"),

@@ -35,7 +35,7 @@
       "achieved": true,
       "evidence": {
         "best_security_count": 5543,
-        "manifest": "/Users/zhangziqing/Documents/投资数据整理/data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json"
+        "manifest": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json"
       },
       "gaps": []
     },
@@ -48,8 +48,8 @@
           "2026-03-31": 3
         },
         "manifests": {
-          "2025-12-31": "/Users/zhangziqing/Documents/投资数据整理/data/normalized/runs/iwencai/2026/08/08/085444945234b7d8d601/manifest.json",
-          "2026-03-31": "/Users/zhangziqing/Documents/投资数据整理/data/normalized/runs/iwencai/2026/08/08/0034a5c33c31a70e5124/manifest.json"
+          "2025-12-31": "data/normalized/runs/iwencai/2026/08/08/085444945234b7d8d601/manifest.json",
+          "2026-03-31": "data/normalized/runs/iwencai/2026/08/08/0034a5c33c31a70e5124/manifest.json"
         }
       },
       "gaps": [

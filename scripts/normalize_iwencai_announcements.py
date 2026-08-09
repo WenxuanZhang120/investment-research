@@ -16,6 +16,10 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from scripts.repository_paths import repository_relative_path  # noqa: E402
+
 DEFAULT_TAXONOMY = REPOSITORY_ROOT / "config" / "event_taxonomy.json"
 DEFAULT_NORMALIZED_ROOT = REPOSITORY_ROOT / "data" / "normalized"
 PROJECT_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
@@ -96,7 +100,12 @@ def _source_security_identity(item: Dict[str, Any]) -> Tuple[Optional[str], Opti
     )
 
 
-def build_events(snapshot_path: Path, *, taxonomy_path: Path = DEFAULT_TAXONOMY) -> Dict[str, Any]:
+def build_events(
+    snapshot_path: Path,
+    *,
+    taxonomy_path: Path = DEFAULT_TAXONOMY,
+    repository_root: Path = REPOSITORY_ROOT,
+) -> Dict[str, Any]:
     snapshot_path = Path(snapshot_path)
     metadata, payload = _load_snapshot(snapshot_path)
     taxonomy = _taxonomy(taxonomy_path)
@@ -136,7 +145,9 @@ def build_events(snapshot_path: Path, *, taxonomy_path: Path = DEFAULT_TAXONOMY)
                 "query": metadata["query"],
                 "fetched_at": metadata["fetched_at"],
                 "raw_record_id": metadata["record_id"],
-                "raw_snapshot": str(snapshot_path),
+                "raw_snapshot": repository_relative_path(
+                    snapshot_path, repository_root=repository_root
+                ),
                 "normalizer_version": NORMALIZER_VERSION,
                 "taxonomy_version": taxonomy["taxonomy_version"],
                 "raw_item": item,
@@ -212,7 +223,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
     try:
         destination = write_bundle(
-            build_events(args.snapshot, taxonomy_path=args.taxonomy),
+            build_events(
+                args.snapshot,
+                taxonomy_path=args.taxonomy,
+                repository_root=REPOSITORY_ROOT,
+            ),
             normalized_root=args.normalized_root,
         )
     except (OSError, TypeError, ValueError) as error:

@@ -1,0 +1,63 @@
+{
+  "run_schema_version": 1,
+  "run_id": "26d1b05193572e9aa0dc",
+  "pipeline_version": "1.0.0",
+  "config_sha256": "dbe031e11f6ba2cf0b6e152ab5bc57f06b98714dfd56bf0141d2710d8e37ef7c",
+  "llm_calls_allowed": false,
+  "external_collection_enabled": false,
+  "status": "succeeded",
+  "started_at": "2026-08-09T02:48:07.299683+00:00",
+  "finished_at": "2026-08-09T02:48:36.901187+00:00",
+  "step_count": 3,
+  "steps": [
+    {
+      "stage": "status",
+      "step_id": "financial_collection_status",
+      "command": [
+        "scripts/run_financial_collection_plan.py",
+        "status"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T02:48:07.299933+00:00",
+      "finished_at": "2026-08-09T02:48:08.098851+00:00",
+      "stdout_sha256": "0b9752d62158f2bc27d6e9c72e5493c7c564179a8d92f30821cd9d53920b0b66",
+      "stdout_bytes": 2014,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "system_completion_audit",
+      "command": [
+        "scripts/audit_system_completion.py"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T02:48:08.098967+00:00",
+      "finished_at": "2026-08-09T02:48:23.209994+00:00",
+      "stdout_sha256": "d7b6fbb450933ecbafb688241e0e310252cb0c5ad4303746e6f169af16f715a9",
+      "stdout_bytes": 6425,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "validation",
+      "step_id": "repository_integrity",
+      "command": [
+        "scripts/validate_repository.py"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T02:48:23.210122+00:00",
+      "finished_at": "2026-08-09T02:48:36.901131+00:00",
+      "stdout_sha256": "bef69c1ffe676156336680a5bd19dfef400a8b9e7fc47005f02b8e6edd0c8e67",
+      "stdout_bytes": 39,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    }
+  ]
+}

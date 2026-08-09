@@ -1,0 +1,136 @@
+{
+  "run_schema_version": 1,
+  "run_id": "b8d3865e9c976ad4ce13",
+  "pipeline_version": "1.1.0",
+  "config_sha256": "f24205f62addf3e9d9ae99f7ba5dc03172c3a4950d8f6e1072beef7c0205fbfb",
+  "llm_calls_allowed": false,
+  "external_collection_enabled": false,
+  "readiness": {
+    "schema_version": 1,
+    "status": "waiting_for_complete_input",
+    "planned_step_count": 0,
+    "incomplete_job_count": 5,
+    "financial_jobs": [
+      {
+        "job_id": "2026q1_base_resume",
+        "period_end": "2026-03-31",
+        "collection_status": "partial",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      },
+      {
+        "job_id": "2024fy_advanced_inputs",
+        "period_end": "2024-12-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      },
+      {
+        "job_id": "2025fy_advanced_supplement",
+        "period_end": "2025-12-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      },
+      {
+        "job_id": "2025q1_advanced_inputs",
+        "period_end": "2025-03-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      },
+      {
+        "job_id": "2026q1_advanced_supplement",
+        "period_end": "2026-03-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      }
+    ],
+    "basic_financial_metrics": [
+      {
+        "job_id": "2026q1_base_resume",
+        "status": "waiting_for_normalized_input",
+        "source_manifest": null,
+        "derived_manifest": null
+      }
+    ],
+    "advanced_financial_metrics": {
+      "job_ids": [
+        "2024fy_advanced_inputs",
+        "2025fy_advanced_supplement",
+        "2025q1_advanced_inputs",
+        "2026q1_advanced_supplement"
+      ],
+      "status": "waiting_for_normalized_inputs",
+      "waiting_for": [
+        "2024fy_advanced_inputs",
+        "2025fy_advanced_supplement",
+        "2025q1_advanced_inputs",
+        "2026q1_advanced_supplement"
+      ],
+      "source_manifests": [],
+      "derived_manifest": null
+    }
+  },
+  "status": "succeeded",
+  "started_at": "2026-08-09T03:26:12.149893+00:00",
+  "finished_at": "2026-08-09T03:26:40.922179+00:00",
+  "step_count": 3,
+  "steps": [
+    {
+      "stage": "status",
+      "step_id": "financial_collection_status",
+      "command": [
+        "scripts/run_financial_collection_plan.py",
+        "status"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T03:26:12.150125+00:00",
+      "finished_at": "2026-08-09T03:26:12.936724+00:00",
+      "stdout_sha256": "0b9752d62158f2bc27d6e9c72e5493c7c564179a8d92f30821cd9d53920b0b66",
+      "stdout_bytes": 2014,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "system_completion_audit",
+      "command": [
+        "scripts/audit_system_completion.py"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T03:26:12.936796+00:00",
+      "finished_at": "2026-08-09T03:26:27.982751+00:00",
+      "stdout_sha256": "d7b6fbb450933ecbafb688241e0e310252cb0c5ad4303746e6f169af16f715a9",
+      "stdout_bytes": 6425,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "validation",
+      "step_id": "repository_integrity",
+      "command": [
+        "scripts/validate_repository.py"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T03:26:27.982861+00:00",
+      "finished_at": "2026-08-09T03:26:40.922121+00:00",
+      "stdout_sha256": "bef69c1ffe676156336680a5bd19dfef400a8b9e7fc47005f02b8e6edd0c8e67",
+      "stdout_bytes": 39,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    }
+  ]
+}

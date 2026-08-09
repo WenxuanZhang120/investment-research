@@ -154,7 +154,9 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
             )
             snapshots.append(snapshot)
 
-        built = build_financial_batch(snapshots)
+        built = build_financial_batch(
+            snapshots, repository_root=self.root
+        )
 
         self.assertEqual(len(built["tables"]["financial_reports"]), 3)
         self.assertEqual(len(built["tables"]["financial_facts"]), 45)
@@ -165,7 +167,9 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(FinancialNormalizationError, "incomplete"):
-            build_financial_batch([snapshots[0]])
+            build_financial_batch(
+                [snapshots[0]], repository_root=self.root
+            )
 
     def test_writes_atomic_bundle_and_refuses_overwrite(self) -> None:
         destination = normalize_financial_snapshots(
@@ -206,7 +210,7 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
         snapshot.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
 
         with self.assertRaisesRegex(FinancialNormalizationError, "checksum"):
-            build_financial_tables(snapshot)
+            build_financial_tables(snapshot, repository_root=self.root)
 
     def test_rejects_filing_date_after_fetch_time(self) -> None:
         document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
@@ -221,7 +225,7 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
             FinancialNormalizationError,
             "later than fetched_at",
         ):
-            build_financial_tables(snapshot)
+            build_financial_tables(snapshot, repository_root=self.root)
 
 
 if __name__ == "__main__":

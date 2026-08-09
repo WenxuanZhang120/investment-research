@@ -17,6 +17,10 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from scripts.repository_paths import repository_relative_path  # noqa: E402
+
 DEFAULT_METRIC_CONFIG = REPOSITORY_ROOT / "config" / "financial_metrics.json"
 DEFAULT_DERIVED_ROOT = REPOSITORY_ROOT / "data" / "derived"
 CALCULATOR_VERSION = "1.0.1"
@@ -38,13 +42,6 @@ REQUIRED_FACT_FIELDS = {
 
 class DerivationError(ValueError):
     """Raised when derived metrics cannot be calculated reproducibly."""
-
-
-def _display_path(path: Path) -> str:
-    try:
-        return path.resolve().relative_to(REPOSITORY_ROOT).as_posix()
-    except ValueError:
-        return str(path.resolve())
 
 
 def _sha256(path: Path) -> str:
@@ -175,6 +172,7 @@ def build_derived_metrics(
     source_manifest_path: Path,
     *,
     metric_config_path: Path = DEFAULT_METRIC_CONFIG,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     source_manifest_path = Path(source_manifest_path)
     source_bundle_dir = source_manifest_path.parent
@@ -261,7 +259,9 @@ def build_derived_metrics(
                     ],
                     "calculator_version": CALCULATOR_VERSION,
                     "source_financial_bundle_id": source_manifest["bundle_id"],
-                    "source_financial_manifest": _display_path(source_manifest_path),
+                    "source_financial_manifest": repository_relative_path(
+                        source_manifest_path, repository_root=repository_root
+                    ),
                     "input_facts": input_facts,
                 }
             )
@@ -338,6 +338,7 @@ def write_derived_bundle(
     built: Dict[str, Any],
     *,
     derived_root: Path = DEFAULT_DERIVED_ROOT,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Path:
     fetched_at = datetime.fromisoformat(built["source_fetched_at_start"])
     destination = derived_root.joinpath(
@@ -375,7 +376,9 @@ def write_derived_bundle(
             "metric_definition_version": built["metric_definition_version"],
             "bundle_id": built["bundle_id"],
             "source_financial_bundle_id": built["source_bundle_id"],
-            "source_financial_manifest": _display_path(built["source_manifest"]),
+            "source_financial_manifest": repository_relative_path(
+                built["source_manifest"], repository_root=repository_root
+            ),
             "source_fetched_at_start": built["source_fetched_at_start"],
             "source_fetched_at_end": built["source_fetched_at_end"],
             "coverage": built["coverage"],
@@ -404,12 +407,18 @@ def derive_financial_metrics(
     *,
     metric_config_path: Path = DEFAULT_METRIC_CONFIG,
     derived_root: Path = DEFAULT_DERIVED_ROOT,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Path:
     built = build_derived_metrics(
         source_manifest_path,
         metric_config_path=metric_config_path,
+        repository_root=repository_root,
     )
-    return write_derived_bundle(built, derived_root=derived_root)
+    return write_derived_bundle(
+        built,
+        derived_root=derived_root,
+        repository_root=repository_root,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

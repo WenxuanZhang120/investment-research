@@ -26,6 +26,7 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
     load_field_mappings,
     parse_field_name,
 )
+from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
 NORMALIZER_VERSION = "2.0.0"
@@ -59,13 +60,6 @@ def _canonical_payload(payload: Any) -> bytes:
         separators=(",", ":"),
         sort_keys=True,
     ).encode("utf-8")
-
-
-def _display_path(path: Path) -> str:
-    try:
-        return path.resolve().relative_to(REPOSITORY_ROOT).as_posix()
-    except ValueError:
-        return str(path.resolve())
 
 
 def _parse_timestamp(value: Any) -> datetime:
@@ -376,13 +370,16 @@ def _record_context(
     metadata: Dict[str, Any],
     snapshot_path: Path,
     mapping_version: str,
+    repository_root: Path,
 ) -> Dict[str, Any]:
     return {
         "record_schema_version": RECORD_SCHEMA_VERSION,
         "source": metadata["source"],
         "fetched_at": metadata["fetched_at"],
         "raw_record_id": metadata["record_id"],
-        "raw_snapshot": _display_path(snapshot_path),
+        "raw_snapshot": repository_relative_path(
+            snapshot_path, repository_root=repository_root
+        ),
         "normalizer_version": NORMALIZER_VERSION,
         "mapping_version": mapping_version,
     }
@@ -442,6 +439,7 @@ def build_normalized_tables(
     snapshot_path: Path,
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     """Build deterministic normalized records for one raw snapshot."""
     metadata, payload = _load_envelope(snapshot_path)
@@ -499,7 +497,12 @@ def build_normalized_tables(
 
     fetched_at = _parse_timestamp(metadata["fetched_at"])
     observed_date = fetched_at.date().isoformat()
-    context = _record_context(metadata, snapshot_path, mapping_version)
+    context = _record_context(
+        metadata,
+        snapshot_path,
+        mapping_version,
+        repository_root,
+    )
     tables: Dict[str, List[Dict[str, Any]]] = {
         table_name: [] for table_name in TABLE_FILES
     }
@@ -693,6 +696,7 @@ def build_normalized_batch(
     snapshot_paths: Sequence[Path],
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     """Combine a complete ordered page set into one normalized bundle."""
     if not snapshot_paths:
@@ -702,7 +706,11 @@ def build_normalized_batch(
         raise NormalizationError("raw snapshot paths must be unique")
 
     parts = [
-        build_normalized_tables(path, mapping_file=mapping_file)
+        build_normalized_tables(
+            path,
+            mapping_file=mapping_file,
+            repository_root=repository_root,
+        )
         for path in resolved_paths
     ]
     if all(part["page_info"]["page"] is not None for part in parts):
@@ -755,7 +763,9 @@ def build_normalized_batch(
         {
             "record_id": part["metadata"]["record_id"],
             "payload_sha256": part["metadata"]["payload_sha256"],
-            "snapshot": _display_path(part["snapshot_path"]),
+            "snapshot": repository_relative_path(
+                part["snapshot_path"], repository_root=repository_root
+            ),
             "fetched_at": part["metadata"]["fetched_at"],
             **part["page_info"],
         }
@@ -889,8 +899,13 @@ def normalize_snapshots(
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
     normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Path:
-    built = build_normalized_batch(snapshot_paths, mapping_file=mapping_file)
+    built = build_normalized_batch(
+        snapshot_paths,
+        mapping_file=mapping_file,
+        repository_root=repository_root,
+    )
     return write_normalized_bundle(built, normalized_root=normalized_root)
 
 
@@ -899,11 +914,13 @@ def normalize_snapshot(
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
     normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
+    repository_root: Path = REPOSITORY_ROOT,
 ) -> Path:
     return normalize_snapshots(
         [snapshot_path],
         mapping_file=mapping_file,
         normalized_root=normalized_root,
+        repository_root=repository_root,
     )
 
 
