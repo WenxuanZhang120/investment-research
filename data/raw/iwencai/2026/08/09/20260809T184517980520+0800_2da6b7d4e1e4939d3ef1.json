@@ -1,0 +1,84 @@
+{
+  "metadata": {
+    "source": "iwencai",
+    "query": "P0研究队列公司最近七日股份回购公告｜标的：000001.SZ 平安银行、000987.SZ 越秀资本、002142.SZ 宁波银行、002736.SZ 国信证券、002966.SZ 苏州银行、600000.SH 浦发银行、600036.SH 招商银行、600919.SH 江苏银行、601009.SH 南京银行、601077.SH 渝农商行、601166.SH 兴业银行、601169.SH 北京银行、601288.SH 农业银行、601328.SH 交通银行、601398.SH 工商银行、601688.SH 华泰证券、601825.SH 沪农商行、601838.SH 成都银行、601881.SH 中国银河、601916.SH 浙商银行、601939.SH 建设银行、601963.SH 重庆银行、601988.SH 中国银行、601998.SH 中信银行",
+    "fetched_at": "2026-08-09T18:45:17.980520+08:00",
+    "record_id": "2da6b7d4e1e4939d3ef1",
+    "schema_version": 1,
+    "payload_sha256": "f1fa96866db7822fa93884206fb1707d52a216b6d8e510d8c697f1c2cb75251a",
+    "as_of_date": "2026-08-09",
+    "collection_method": "codex_agent",
+    "collector_name": "announcement-search",
+    "collection_scope": {
+      "scope_schema_version": 1,
+      "scope_type": "p0_securities",
+      "priority": "P0",
+      "target_source_manifest": "data/derived/runs/screening/2026/08/07/b8e8a88ce7d140110835/manifest.json",
+      "target_as_of_date": "2026-08-07",
+      "target_security_codes": [
+        "000001.SZ",
+        "000987.SZ",
+        "002142.SZ",
+        "002736.SZ",
+        "002966.SZ",
+        "600000.SH",
+        "600036.SH",
+        "600919.SH",
+        "601009.SH",
+        "601077.SH",
+        "601166.SH",
+        "601169.SH",
+        "601288.SH",
+        "601328.SH",
+        "601398.SH",
+        "601688.SH",
+        "601825.SH",
+        "601838.SH",
+        "601881.SH",
+        "601916.SH",
+        "601939.SH",
+        "601963.SH",
+        "601988.SH",
+        "601998.SH"
+      ],
+      "allowed_event_types": [
+        "share_repurchase"
+      ]
+    }
+  },
+  "payload": {
+    "status_msg": "OK",
+    "status_code": 0,
+    "data": [],
+    "abtest_info": "",
+    "took": 183,
+    "total": 0,
+    "ab": {
+      "scene_id": "xkqxpvhms",
+      "layer_exp": [
+        {
+          "layer_id": "qp_layer",
+          "exp_id": "qp_base"
+        },
+        {
+          "layer_id": "mix_layer",
+          "exp_id": "mix_base"
+        },
+        {
+          "layer_id": "multi_search_layer",
+          "exp_id": "multi_search_base"
+        }
+      ]
+    },
+    "header": {
+      "search_query": [
+        "P0研究队列公司最近七日股份回购公告｜标的：000001.SZ 平安银行、000987.SZ 越秀资本、002142.SZ 宁波银行、002736.SZ 国信证券、002966.SZ 苏州银行、600000.SH 浦发银行、600036.SH 招商银行、600919.SH 江苏银行、601009.SH 南京银行、601077.SH 渝农商行、601166.SH 兴业银行、601169.SH 北京银行、601288.SH 农业银行、601328.SH 交通银行、601398.SH 工商银行、601688.SH 华泰证券、601825.SH 沪农商行、601838.SH 成都银行、601881.SH 中国银河、601916.SH 浙商银行、601939.SH 建设银行、601963.SH 重庆银行、601988.SH 中国银行、601998.SH 中信银行"
+      ],
+      "query": "P0研究队列公司最近七日股份回购公告｜标的：000001.SZ 平安银行、000987.SZ 越秀资本、002142.SZ 宁波银行、002736.SZ 国信证券、002966.SZ 苏州银行、600000.SH 浦发银行、600036.SH 招商银行、600919.SH 江苏银行、601009.SH 南京银行、601077.SH 渝农商行、601166.SH 兴业银行、601169.SH 北京银行、601288.SH 农业银行、601328.SH 交通银行、601398.SH 工商银行、601688.SH 华泰证券、601825.SH 沪农商行、601838.SH 成都银行、601881.SH 中国银河、601916.SH 浙商银行、601939.SH 建设银行、601963.SH 重庆银行、601988.SH 中国银行、601998.SH 中信银行",
+      "integrity_result": true,
+      "intents": [],
+      "intent": "资讯消息-公告"
+    },
+    "content_data": []
+  }
+}

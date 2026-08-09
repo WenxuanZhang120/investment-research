@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "source": "iwencai",
+    "query": "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件",
+    "fetched_at": "2026-08-09T18:45:23.138817+08:00",
+    "record_id": "b0bbf8969ea7e68e015f",
+    "schema_version": 1,
+    "payload_sha256": "635d3b6f5211442434b800bd4f2150b322085fbd86848826a514099159c048ff",
+    "as_of_date": "2026-08-09",
+    "raw_field_names": [
+      "channel",
+      "data_source",
+      "extra",
+      "id",
+      "index",
+      "modify_time",
+      "name",
+      "operation_type",
+      "publish_date",
+      "publish_time",
+      "score",
+      "site_authority",
+      "source_original",
+      "status",
+      "summary",
+      "title",
+      "traceability_type",
+      "uid",
+      "url"
+    ],
+    "collection_method": "codex_agent",
+    "collector_name": "news-search",
+    "collection_scope": {
+      "scope_schema_version": 1,
+      "scope_type": "market_wide",
+      "topic_id": "industry_policy_news"
+    }
+  },
+  "payload": {
+    "status_msg": "OK",
+    "status_code": 0,
+    "data": [
+      {
+        "channel": "news",
+        "id": "1906cce7e17cdb84_0",
+        "uid": "1906cce7e17cdb84",
+        "url": "https://www.cnfin.com/hb-lb/detail/20260809/4452883_1.html",
+        "title": "新华财经周报：8月3日至8月9日",
+        "summary": "新华财经周报：8月3日至8月9日•李强签署国务院令 公布修订后的《集成电路布图设计保护条例》•国家发展改革委、国家能源局印发《新型电力系统建设“十五五”规划》•商务部：加强无人机相关两用物项对美国出口管制•港交所推出全球首个离岸国债期货 补齐外资跨境对冲工具短板•证监会发布十项新举措、深化内地与香港市场合作•中国人民银行连续第21个月增持黄金外汇储备•国家外汇管理局：7月末我国外汇储备规模为34188亿美元•海关总署：1至7月集成电路累计出口金额达2160亿美元 同比增长99.5%•7月先进制造领域投资同比增长73.1% 消费增速同步回升•国家统计局：7月CPI环比下降0.1% PPI环比下降0.7%•市场预估宇树科技IPO市值或将超400亿元发行价150.80元／股、DeepSeek与腾讯等参与战略配售•欧元区6月生产者价格指数环比下降0.3%•美国7月非农就业人数意外减少2.3万 预期为增加8万•知情人士称美军高层正寻求对伊战事“退出路径”•国务院总理李强日前签署国务院令，公布修订后的《集成电路布图设计保护条例》（以下简称《条例》），自2026年10月15日起施行",
+        "index": "iwc_index_news_v5_vector",
+        "score": 199.17059999999998,
+        "extra": {
+          "publish_source": "中国金融信息网",
+          "real_publish_source": "新华财经",
+          "host_name": "www.cnfin.com",
+          "de_groupid": "aaa55cd73f25dae8",
+          "site_tags": []
+        },
+        "name": "admin",
+        "status": 0,
+        "data_source": "NEWS_VECTOR_GOOD",
+        "source_original": "新华财经周报：8月3日至8月9日•李强签署国务院令 公布修订后的《集成电路布图设计保护条例》•国家发展改革委、国家能源局印发《新型电力系统建设“十五五”规划》•商务部：加强无人机相关两用物项对美国出口管制•港交所推出全球首个离岸国债期货 补齐外资跨境对冲工具短板•证监会发布十项新举措、深化内地与香港市场合作•中国人民银行连续第21个月增持黄金外汇储备•国家外汇管理局：7月末我国外汇储备规模为34188亿美元•海关总署：1至7月集成电路累计出口金额达2160亿美元 同比增长99.5%•7月先进制造领域投资同比增长73.1% 消费增速同步回升•国家统计局：7月CPI环比下降0.1% PPI环比下降0.7%•市场预估宇树科技IPO市值或将超400亿元发行价150.80元／股、DeepSeek与腾讯等参与战略配售•欧元区6月生产者价格指数环比下降0.3%•美国7月非农就业人数意外减少2.3万 预期为增加8万•知情人士称美军高层正寻求对伊战事“退出路径”•国务院总理李强日前签署国务院令，公布修订后的《集成电路布图设计保护条例》（以下简称《条例》），自2026年10月15日起施行",
+        "publish_time": 1786204800,
+        "publish_date": "2026-08-09 00:00:00",
+        "traceability_type": 0,
+        "site_authority": 4,
+        "modify_time": 0,
+        "operation_type": 0
+      }
+    ],
+    "abtest_info": "",
+    "took": 611,
+    "total": 20,
+    "ab": {
+      "scene_id": "xkqxpvhms",
+      "layer_exp": [
+        {
+          "layer_id": "qp_layer",
+          "exp_id": "qp_base"
+        },
+        {
+          "layer_id": "mix_layer",
+          "exp_id": "mix_base"
+        },
+        {
+          "layer_id": "multi_search_layer",
+          "exp_id": "multi_search_base"
+        }
+      ]
+    },
+    "header": {
+      "search_query": [
+        "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件"
+      ],
+      "query": "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件",
+      "integrity_result": true,
+      "intents": [],
+      "intent": "资讯消息-新闻"
+    },
+    "content_data": []
+  }
+}
