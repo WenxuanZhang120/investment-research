@@ -1,0 +1,29 @@
+{
+  "monitoring_report_schema_version": 1,
+  "bundle_id": "5b440013a1f24198cd5f",
+  "reporter_version": "1.0.0",
+  "kind": "news",
+  "purpose": "factual_news_index_no_investment_judgment",
+  "as_of_date": "2026-08-09",
+  "source_manifests": [
+    {
+      "path": "data/normalized/runs/iwencai/2026/08/09/35a8dfe453c5c33b2501/manifest.json",
+      "sha256": "4fc2827cbe5788232ccff4796714a7f7d57f0be6c95cd3a8d7c54197ba10df55",
+      "bundle_id": "35a8dfe453c5c33b2501",
+      "source_raw_record_id": "95519d3def373cf38df1",
+      "fetched_at": "2026-08-09T18:45:20.406768+08:00"
+    }
+  ],
+  "coverage": {
+    "record_count": 2,
+    "published_at_min": "2026-08-07T07:00:00+08:00",
+    "published_at_max": "2026-08-09T00:00:00+08:00",
+    "available_from_max": "2026-08-09T00:00:00+08:00"
+  },
+  "report": {
+    "file": "financial-news.md",
+    "sha256": "cc86d5da9669d9f91f20aa6e845f9bcf718ae11c8bed2e32b78ec263180f2461"
+  },
+  "investment_judgment_included": false,
+  "automatic_trading_enabled": false
+}

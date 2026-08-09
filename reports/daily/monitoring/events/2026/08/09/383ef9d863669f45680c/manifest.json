@@ -1,0 +1,29 @@
+{
+  "monitoring_report_schema_version": 1,
+  "bundle_id": "383ef9d863669f45680c",
+  "reporter_version": "1.0.0",
+  "kind": "events",
+  "purpose": "factual_announcement_index_no_investment_judgment",
+  "as_of_date": "2026-08-09",
+  "source_manifests": [
+    {
+      "path": "data/normalized/runs/iwencai/2026/08/09/bc65507dfb62a0e27e15/manifest.json",
+      "sha256": "fb827a026285c9e8a041d0e7152688112e326f067fe0dccfb6a71884c190fbe9",
+      "bundle_id": "bc65507dfb62a0e27e15",
+      "source_raw_record_id": "2da6b7d4e1e4939d3ef1",
+      "fetched_at": "2026-08-09T18:45:17.980520+08:00"
+    }
+  ],
+  "coverage": {
+    "record_count": 0,
+    "published_at_min": null,
+    "published_at_max": null,
+    "available_from_max": null
+  },
+  "report": {
+    "file": "announcement-events.md",
+    "sha256": "0583ccc126b3cf09ed9e909fa8f1b59b7372233ca7d2e880e3bfd9f21ee12ac0"
+  },
+  "investment_judgment_included": false,
+  "automatic_trading_enabled": false
+}
