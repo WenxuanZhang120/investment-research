@@ -10,6 +10,8 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.screen_market_research_queue import (  # noqa: E402
+    CONNECTOR_DIRECTORY,
+    CONNECTOR_MAX_FILE_BYTES,
     _percentile_scores,
     build_screen,
     write_screen,
@@ -52,6 +54,32 @@ class ScreenMarketResearchQueueTests(unittest.TestCase):
             manifest = json.loads((destination / "manifest.json").read_text())
             content = (destination / manifest["table"]["file"]).read_bytes()
             self.assertEqual(manifest["table"]["sha256"], hashlib.sha256(content).hexdigest())
+            connector = destination / CONNECTOR_DIRECTORY
+            connector_manifest = json.loads(
+                (connector / "manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(connector_manifest["source_manifest"], "../manifest.json")
+            self.assertEqual(
+                connector_manifest["source_table"]["sha256"],
+                manifest["table"]["sha256"],
+            )
+            summary = connector_manifest["tables"]["p0_p1_summary"]
+            summary_content = (connector / summary["file"]).read_bytes()
+            self.assertLessEqual(len(summary_content), CONNECTOR_MAX_FILE_BYTES)
+            self.assertEqual(summary["sha256"], hashlib.sha256(summary_content).hexdigest())
+            self.assertTrue(
+                all(
+                    json.loads(line)["priority"] in {"P0", "P1"}
+                    for line in summary_content.decode("utf-8").splitlines()
+                )
+            )
+            partition_content = b""
+            for partition in connector_manifest["tables"]["full_queue"]["partitions"]:
+                chunk = (connector / partition["file"]).read_bytes()
+                self.assertLessEqual(len(chunk), CONNECTOR_MAX_FILE_BYTES)
+                self.assertEqual(partition["sha256"], hashlib.sha256(chunk).hexdigest())
+                partition_content += chunk
+            self.assertEqual(partition_content, content)
             with self.assertRaises(FileExistsError):
                 write_screen(built, derived_root=Path(temporary))
 

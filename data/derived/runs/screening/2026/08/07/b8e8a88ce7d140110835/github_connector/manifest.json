@@ -1,0 +1,53 @@
+{
+  "bundle_schema_version": 1,
+  "kind": "github_connector_export",
+  "source_bundle_id": "b8e8a88ce7d140110835",
+  "source_manifest": "../manifest.json",
+  "source_table": {
+    "file": "market_research_queue.jsonl",
+    "record_count": 3193,
+    "sha256": "84801baa5b752c092ac35e9d33276be95c6c77c1affe5e01404acc5fea5fd79c"
+  },
+  "max_file_size_bytes": 921600,
+  "tables": {
+    "p0_p1_summary": {
+      "logical_name": "market_research_queue_p0_p1",
+      "file": "market_research_queue_p0_p1.jsonl",
+      "primary_key": [
+        "security_code",
+        "as_of_date",
+        "screening_version"
+      ],
+      "record_count": 235,
+      "priority_counts": {
+        "P0": 24,
+        "P1": 211
+      },
+      "byte_size": 124469,
+      "sha256": "7d0f367a82e5efb98fc6cc40f1ba45da96d7db402acee43482f5138baca3c8b0"
+    },
+    "full_queue": {
+      "logical_name": "market_research_queue_connector_parts",
+      "primary_key": [
+        "security_code",
+        "as_of_date",
+        "screening_version"
+      ],
+      "record_count": 3193,
+      "partitions": [
+        {
+          "file": "market_research_queue.part-0001.jsonl",
+          "record_count": 1738,
+          "byte_size": 921554,
+          "sha256": "1957fc95209fe3adb5631830e41b61428e8b077ec1a1c1d219d94ee54b86617c"
+        },
+        {
+          "file": "market_research_queue.part-0002.jsonl",
+          "record_count": 1455,
+          "byte_size": 677143,
+          "sha256": "9dc90d85e60bc90dd132099b8da4562cfd4580e278c534fd049bc59226849f25"
+        }
+      ]
+    }
+  }
+}
