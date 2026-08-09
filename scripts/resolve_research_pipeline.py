@@ -108,24 +108,45 @@ def _routes(value: Any) -> List[Dict[str, str]]:
         raise ResearchReadinessError("monitoring_routes must be a non-empty array")
     routes = []
     route_ids = set()
-    queries = set()
+    query_rules = set()
     for item in value:
         if not isinstance(item, dict):
             raise ResearchReadinessError("monitoring route must be an object")
-        route_id, stream, query = (
-            item.get("route_id"),
-            item.get("stream"),
-            item.get("query"),
-        )
-        if not all(isinstance(field, str) and field for field in (route_id, stream, query)):
+        route_id, stream = item.get("route_id"), item.get("stream")
+        query, query_prefix = item.get("query"), item.get("query_prefix")
+        if not all(isinstance(field, str) and field for field in (route_id, stream)):
             raise ResearchReadinessError("monitoring route fields must be non-empty strings")
+        exact = isinstance(query, str) and bool(query)
+        prefix = isinstance(query_prefix, str) and bool(query_prefix)
+        if exact == prefix:
+            raise ResearchReadinessError(
+                "monitoring route requires exactly one query or query_prefix"
+            )
         if stream not in STREAMS:
             raise ResearchReadinessError(f"unsupported monitoring stream: {stream}")
-        if route_id in route_ids or query in queries:
-            raise ResearchReadinessError("monitoring routes must have unique IDs and queries")
+        match_type = "exact" if exact else "prefix"
+        query_rule = query if exact else query_prefix
+        if route_id in route_ids or query_rule in query_rules:
+            raise ResearchReadinessError(
+                "monitoring routes must have unique IDs and query rules"
+            )
         route_ids.add(route_id)
-        queries.add(query)
-        routes.append({"route_id": route_id, "stream": stream, "query": query})
+        query_rules.add(query_rule)
+        routes.append(
+            {
+                "route_id": route_id,
+                "stream": stream,
+                "match_type": match_type,
+                "query_rule": query_rule,
+            }
+        )
+    prefixes = [item["query_rule"] for item in routes if item["match_type"] == "prefix"]
+    if any(
+        left != right and (left.startswith(right) or right.startswith(left))
+        for left in prefixes
+        for right in prefixes
+    ):
+        raise ResearchReadinessError("monitoring query prefixes must not overlap")
     return routes
 
 
@@ -193,7 +214,12 @@ def _monitoring_steps(
     repository_root: Path,
     timeout: int,
 ) -> Dict[str, Any]:
-    route_by_query = {item["query"]: item for item in routes}
+    route_by_query = {
+        item["query_rule"]: item
+        for item in routes
+        if item["match_type"] == "exact"
+    }
+    prefix_routes = [item for item in routes if item["match_type"] == "prefix"]
     taxonomy = _object(taxonomy_path)
     taxonomy_version = taxonomy.get("taxonomy_version")
     if not isinstance(taxonomy_version, str) or not taxonomy_version:
@@ -214,7 +240,17 @@ def _monitoring_steps(
     normalization_steps = []
     matched_paths = set()
     for entry in _query_log_entries(raw_root):
-        route = route_by_query.get(entry.get("query"))
+        raw_query = entry.get("query")
+        route = route_by_query.get(raw_query)
+        if route is None and isinstance(raw_query, str):
+            prefix_matches = [
+                item for item in prefix_routes if raw_query.startswith(item["query_rule"])
+            ]
+            if len(prefix_matches) > 1:
+                raise ResearchReadinessError(
+                    f"monitoring query matches multiple prefixes: {raw_query}"
+                )
+            route = prefix_matches[0] if prefix_matches else None
         if route is None:
             continue
         relative = entry["raw_relative_path"]
@@ -350,7 +386,10 @@ def _monitoring_steps(
             {
                 "route_id": route["route_id"],
                 "stream": route["stream"],
-                "query_sha256": hashlib.sha256(route["query"].encode("utf-8")).hexdigest(),
+                "query_match_type": route["match_type"],
+                "query_sha256": hashlib.sha256(
+                    route["query_rule"].encode("utf-8")
+                ).hexdigest(),
                 "matched_snapshot_count": len(snapshots),
                 "snapshots": snapshots,
                 "reports": report_summaries,

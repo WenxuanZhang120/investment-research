@@ -24,13 +24,14 @@ from scripts.normalize_iwencai_announcements import (  # noqa: E402
     _classify,
     _load_snapshot,
     _source_security_identity,
+    _scope_allows,
     _taxonomy,
     _timestamp,
 )
 from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
-NORMALIZER_VERSION = "1.1.0"
+NORMALIZER_VERSION = "1.2.0"
 
 
 def _publisher(item: Dict[str, Any]) -> Optional[str]:
@@ -64,6 +65,8 @@ def build_news(
             raise ValueError(f"data[{index}] url is required")
         published_at = _timestamp(item.get("publish_time"))
         event_type, keywords = _classify(title, taxonomy)
+        if not _scope_allows(item, metadata, event_type):
+            continue
         source_security_code, security_name = _source_security_identity(item)
         identity = "\0".join(("iwencai-news", url, published_at, title)).encode()
         news_id = hashlib.sha256(identity).hexdigest()[:24]
@@ -150,6 +153,7 @@ def write_bundle(
             "source": "iwencai",
             "source_raw_record_id": built["metadata"]["record_id"],
             "fetched_at": built["metadata"]["fetched_at"],
+            "collection_scope": built["metadata"].get("collection_scope"),
             "coverage": {
                 "record_count": len(built["records"]),
                 "event_types": sorted({item["event_type"] for item in built["records"]}),

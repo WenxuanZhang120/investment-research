@@ -44,14 +44,29 @@
     "timeout_seconds": 900,
     "monitoring_routes": [
       {
-        "route_id": "recent_share_repurchase_announcements",
+        "route_id": "p0_share_repurchase_announcements",
         "stream": "announcements",
-        "query": "沪深主板A股 最近七日 股份回购公告，排除创业板、科创板和北交所"
+        "query_prefix": "P0研究队列公司最近七日股份回购公告｜标的："
       },
       {
-        "route_id": "recent_important_company_news",
+        "route_id": "p0_important_company_news",
         "stream": "news",
-        "query": "沪深主板A股 最近七日 重要公司新闻，排除创业板、科创板和北交所"
+        "query_prefix": "P0研究队列公司最近七日重要新闻｜标的："
+      },
+      {
+        "route_id": "china_macro_policy_news",
+        "stream": "news",
+        "query": "最近三日中国宏观经济、国务院、央行、财政部、证监会、发改委重要政策及资本市场重大事件"
+      },
+      {
+        "route_id": "global_macro_market_news",
+        "stream": "news",
+        "query": "最近三日美联储、美国通胀就业、利率汇率、关税贸易、地缘政治及纳斯达克和标普500重大市场事件"
+      },
+      {
+        "route_id": "industry_policy_news",
+        "stream": "news",
+        "query": "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件"
       }
     ]
   },
