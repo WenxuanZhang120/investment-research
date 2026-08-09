@@ -29,6 +29,7 @@ from scripts.repository_paths import (  # noqa: E402
     RepositoryPathError,
     repository_relative_path,
 )
+from scripts.resolve_research_pipeline import resolve_research_pipeline  # noqa: E402
 from scripts.run_financial_collection_plan import inspect_job, load_plan  # noqa: E402
 
 
@@ -423,19 +424,52 @@ def resolve_pipeline_config(
     incomplete_count = sum(
         summary["collection_status"] != "complete" for summary in job_summaries
     )
+    financial_status = (
+        "work_planned"
+        if planned_count
+        else ("waiting_for_complete_input" if incomplete_count else "up_to_date")
+    )
     resolved["readiness"] = {
         "schema_version": 1,
-        "status": (
-            "work_planned"
-            if planned_count
-            else ("waiting_for_complete_input" if incomplete_count else "up_to_date")
-        ),
+        "status": financial_status,
         "planned_step_count": planned_count,
         "incomplete_job_count": incomplete_count,
         "financial_jobs": job_summaries,
         "basic_financial_metrics": basic_summaries,
         "advanced_financial_metrics": advanced_summary,
     }
+
+    research_settings = resolved.get("research_readiness")
+    if research_settings is not None:
+        research = resolve_research_pipeline(
+            research_settings,
+            repository_root=repository_root,
+        )
+        _stage(resolved, "normalization")["steps"].extend(
+            research["normalization_steps"]
+        )
+        _stage(resolved, "derivation")["steps"].extend(
+            research["derivation_steps"]
+        )
+        reporting_stage = _stage(resolved, "reporting")
+        reporting_stage["steps"] = (
+            research["reporting_steps"] + reporting_stage["steps"]
+        )
+        research_planned = research["planned_step_count"]
+        combined_planned = planned_count + research_planned
+        if combined_planned:
+            combined_status = "work_planned"
+        elif incomplete_count or research["status"] == "waiting_for_inputs":
+            combined_status = "waiting_for_complete_input"
+        else:
+            combined_status = "up_to_date"
+        resolved["readiness"]["status"] = combined_status
+        resolved["readiness"]["planned_step_count"] = combined_planned
+        resolved["readiness"]["research"] = {
+            name: value
+            for name, value in research.items()
+            if not name.endswith("_steps")
+        }
     return resolved
 
 
