@@ -126,6 +126,17 @@ class ResolveResearchPipelineTests(unittest.TestCase):
         self.assertEqual(route["snapshots"][0]["normalization_status"], "up_to_date")
         self.assertEqual(route["reports"][0]["status"], "up_to_date")
 
+    def test_monitoring_route_can_match_a_dynamic_p0_query_prefix(self):
+        self.query = "P0公司新闻｜标的：600001.SH 甲公司"
+        self.save_announcement()
+        settings = self.settings()
+        settings["monitoring_routes"][0].pop("query")
+        settings["monitoring_routes"][0]["query_prefix"] = "P0公司新闻｜标的："
+        result = resolve_research_pipeline(settings, repository_root=self.root)
+        route = result["monitoring"]["routes"][0]
+        self.assertEqual(route["matched_snapshot_count"], 1)
+        self.assertEqual(route["query_match_type"], "prefix")
+
     def write_screening_inputs(self):
         market_dir = self.root / "data/normalized/runs/test/market"
         market_dir.mkdir(parents=True)

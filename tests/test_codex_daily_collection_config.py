@@ -23,12 +23,27 @@ class CodexDailyCollectionConfigTests(unittest.TestCase):
             {
                 "daily_a_share_market",
                 "nasdaq_sp500_etfs",
-                "recent_announcements",
-                "recent_company_news",
+                "p0_repurchase_announcements",
+                "p0_company_news",
+                "china_macro_policy_news",
+                "global_macro_market_news",
+                "industry_policy_news",
                 "financial_plan_follow_up",
             },
         )
         self.assertTrue(all(item["display_name"] for item in plan["tasks"]))
+        by_id = {item["task_id"]: item for item in plan["tasks"]}
+        self.assertEqual(by_id["p0_company_news"]["scope_type"], "latest_p0")
+        self.assertEqual(
+            by_id["p0_repurchase_announcements"]["allowed_event_types"],
+            ["share_repurchase"],
+        )
+        for task_id in (
+            "china_macro_policy_news",
+            "global_macro_market_news",
+            "industry_policy_news",
+        ):
+            self.assertEqual(by_id[task_id]["scope_type"], "market_wide")
 
 
 if __name__ == "__main__":

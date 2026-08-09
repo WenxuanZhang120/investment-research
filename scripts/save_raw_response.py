@@ -11,7 +11,7 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 
 SCHEMA_VERSION = 1
@@ -76,6 +76,7 @@ def save_raw_response(
     raw_field_names: Optional[Sequence[str]] = None,
     collection_method: Optional[str] = None,
     collector_name: Optional[str] = None,
+    collection_scope: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Save a raw response envelope and return its path.
 
@@ -109,6 +110,10 @@ def save_raw_response(
     ):
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ValueError(f"{label} must be a non-empty string when supplied")
+    if collection_scope is not None:
+        if not isinstance(collection_scope, dict):
+            raise ValueError("collection_scope must be an object when supplied")
+        _canonical_payload(collection_scope)
 
     timestamp = fetched_at or datetime.now(PROJECT_TIMEZONE)
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
@@ -118,9 +123,10 @@ def save_raw_response(
     payload_bytes = _canonical_payload(payload)
     payload_sha256 = hashlib.sha256(payload_bytes).hexdigest()
     fetched_at_text = timestamp.isoformat(timespec="microseconds")
-    identity = "\0".join(
-        (normalized_source, query, fetched_at_text, payload_sha256)
-    ).encode("utf-8")
+    identity_parts = [normalized_source, query, fetched_at_text, payload_sha256]
+    if collection_scope is not None:
+        identity_parts.append(hashlib.sha256(_canonical_payload(collection_scope)).hexdigest())
+    identity = "\0".join(identity_parts).encode("utf-8")
     record_id = hashlib.sha256(identity).hexdigest()[:20]
 
     metadata = {
@@ -139,6 +145,8 @@ def save_raw_response(
         metadata["collection_method"] = collection_method
     if collector_name is not None:
         metadata["collector_name"] = collector_name
+    if collection_scope is not None:
+        metadata["collection_scope"] = collection_scope
     envelope = {"metadata": metadata, "payload": payload}
 
     root = Path(raw_root)

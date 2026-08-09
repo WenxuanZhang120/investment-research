@@ -229,6 +229,10 @@ def _validate_collection_scope(root: Path, errors: List[str]) -> None:
             raise ValueError("daily plan must reference the investment-universe config")
         if daily.get("collection_budget") != "config/collection_budget.json":
             raise ValueError("daily plan must reference the collection-budget config")
+        if daily.get("monitoring_scope_resolver") != (
+            "scripts/resolve_monitoring_collection_scope.py"
+        ):
+            raise ValueError("daily plan must reference the monitoring scope resolver")
         tasks = daily.get("tasks")
         if not isinstance(tasks, list):
             raise ValueError("daily collection tasks must be an array")
@@ -241,6 +245,29 @@ def _validate_collection_scope(root: Path, errors: List[str]) -> None:
             raise ValueError("daily plan is missing the dedicated ETF collection task")
         if by_kind.get("market", {}).get("complete_pagination_required") is not True:
             raise ValueError("stock-market collection must require complete pagination")
+        by_id = {
+            task.get("task_id"): task
+            for task in tasks
+            if isinstance(task, dict)
+        }
+        for task_id in ("p0_repurchase_announcements", "p0_company_news"):
+            task = by_id.get(task_id, {})
+            if (
+                task.get("scope_type") != "latest_p0"
+                or task.get("normalized_results_must_match_scope") is not True
+            ):
+                raise ValueError(f"{task_id} must be limited to the latest P0 scope")
+        if by_id.get("p0_repurchase_announcements", {}).get("allowed_event_types") != [
+            "share_repurchase"
+        ]:
+            raise ValueError("P0 announcement monitoring must be limited to repurchases")
+        for task_id in (
+            "china_macro_policy_news",
+            "global_macro_market_news",
+            "industry_policy_news",
+        ):
+            if by_id.get(task_id, {}).get("scope_type") != "market_wide":
+                raise ValueError(f"{task_id} must retain market-wide scope")
         if requirements_path.is_file():
             requirements = json.loads(requirements_path.read_text(encoding="utf-8"))
             minimum = requirements.get("minimum_counts", {})

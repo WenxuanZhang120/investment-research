@@ -6,6 +6,7 @@
   "collector": "codex_agent",
   "investment_universe": "config/investment_universe.json",
   "collection_budget": "config/collection_budget.json",
+  "monitoring_scope_resolver": "scripts/resolve_monitoring_collection_scope.py",
   "python_importer": "scripts/import_codex_collection.py",
   "python_pipeline": "scripts/run_daily_pipeline.py",
   "principles": {
@@ -37,21 +38,67 @@
       "separate_from_stock_financial_pipeline": true
     },
     {
-      "task_id": "recent_announcements",
-      "display_name": "最近七日重要公告",
+      "task_id": "p0_repurchase_announcements",
+      "display_name": "P0公司最近七日股份回购公告",
       "dataset_kind": "announcements",
       "tool": "announcement-search",
       "frequency": "daily",
-      "query_template": "沪深主板A股 最近七日 股份回购公告，排除创业板、科创板和北交所",
-      "complete_pagination_required": false
+      "scope_type": "latest_p0",
+      "priority": "P0",
+      "target_batch_size": 25,
+      "maximum_target_count": 50,
+      "allowed_event_types": ["share_repurchase"],
+      "query_template": "P0研究队列公司最近七日股份回购公告｜标的：{p0_security_list}",
+      "requested_result_count": 20,
+      "complete_pagination_required": false,
+      "normalized_results_must_match_scope": true
     },
     {
-      "task_id": "recent_company_news",
-      "display_name": "最近七日重要公司新闻",
+      "task_id": "p0_company_news",
+      "display_name": "P0公司最近七日重要新闻",
       "dataset_kind": "news",
       "tool": "news-search",
       "frequency": "daily",
-      "query_template": "沪深主板A股 最近七日 重要公司新闻，排除创业板、科创板和北交所",
+      "scope_type": "latest_p0",
+      "priority": "P0",
+      "target_batch_size": 25,
+      "maximum_target_count": 50,
+      "query_template": "P0研究队列公司最近七日重要新闻｜标的：{p0_security_list}",
+      "requested_result_count": 20,
+      "complete_pagination_required": false,
+      "normalized_results_must_match_scope": true
+    },
+    {
+      "task_id": "china_macro_policy_news",
+      "display_name": "中国宏观与资本市场政策",
+      "dataset_kind": "news",
+      "tool": "news-search",
+      "frequency": "daily",
+      "scope_type": "market_wide",
+      "query_template": "最近三日中国宏观经济、国务院、央行、财政部、证监会、发改委重要政策及资本市场重大事件",
+      "requested_result_count": 20,
+      "complete_pagination_required": false
+    },
+    {
+      "task_id": "global_macro_market_news",
+      "display_name": "全球宏观与海外市场事件",
+      "dataset_kind": "news",
+      "tool": "news-search",
+      "frequency": "daily",
+      "scope_type": "market_wide",
+      "query_template": "最近三日美联储、美国通胀就业、利率汇率、关税贸易、地缘政治及纳斯达克和标普500重大市场事件",
+      "requested_result_count": 20,
+      "complete_pagination_required": false
+    },
+    {
+      "task_id": "industry_policy_news",
+      "display_name": "重要行业政策与产业事件",
+      "dataset_kind": "news",
+      "tool": "news-search",
+      "frequency": "daily",
+      "scope_type": "market_wide",
+      "query_template": "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件",
+      "requested_result_count": 20,
       "complete_pagination_required": false
     },
     {
