@@ -65,6 +65,44 @@ class NormalizeIwencaiNewsTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             write_bundle(built, normalized_root=self.root / "normalized")
 
+    def test_p0_scope_filters_news_for_non_target_companies(self):
+        path = save_raw_response(
+            {
+                "status_code": 0,
+                "data": [
+                    {
+                        "title": "甲公司重要新闻",
+                        "url": "https://example.test/p0-news",
+                        "publish_time": "2026-08-08T09:30:00+08:00",
+                        "stock_infos": [{"code": "600001", "name": "甲公司"}],
+                    },
+                    {
+                        "title": "乙公司重要新闻",
+                        "url": "https://example.test/non-p0-news",
+                        "publish_time": "2026-08-08T09:31:00+08:00",
+                        "stock_infos": [{"code": "600002", "name": "乙公司"}],
+                    },
+                ],
+            },
+            source="iwencai",
+            query="P0公司新闻",
+            raw_root=self.root / "raw",
+            fetched_at=datetime(
+                2026, 8, 8, 10, tzinfo=timezone(timedelta(hours=8))
+            ),
+            collection_scope={
+                "scope_schema_version": 1,
+                "scope_type": "p0_securities",
+                "priority": "P0",
+                "target_source_manifest": "data/derived/example/manifest.json",
+                "target_as_of_date": "2026-08-07",
+                "target_security_codes": ["600001.SH"],
+            },
+        )
+        built = build_news(path, repository_root=self.root)
+        self.assertEqual(len(built["records"]), 1)
+        self.assertEqual(built["records"][0]["source_security_code"], "600001")
+
 
 if __name__ == "__main__":
     unittest.main()

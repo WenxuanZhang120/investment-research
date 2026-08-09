@@ -10,6 +10,7 @@ import re
 import sys
 from datetime import date, datetime
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 
 
@@ -50,6 +51,7 @@ IMPORT_SCHEMA_VERSION = 1
 DATASET_KINDS = {"market", "etf", "financial", "announcements", "news"}
 SOURCE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 COLLECTION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
+SECURITY_CODE_PATTERN = re.compile(r"^\d{6}\.(?:SH|SZ)$")
 SENSITIVE_KEYS = {
     "authorization",
     "access_token",
@@ -162,6 +164,64 @@ def extract_raw_field_names(payload: Dict[str, Any]) -> List[str]:
     return sorted(fields)
 
 
+def _validate_collection_scope(value: Any) -> Optional[Dict[str, Any]]:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or value.get("scope_schema_version") != 1:
+        raise CodexCollectionError("collection_scope schema_version must be 1")
+    scope_type = value.get("scope_type")
+    if scope_type == "market_wide":
+        topic_id = value.get("topic_id")
+        if not isinstance(topic_id, str) or not topic_id:
+            raise CodexCollectionError("market-wide collection scope requires topic_id")
+        return {
+            "scope_schema_version": 1,
+            "scope_type": "market_wide",
+            "topic_id": topic_id,
+        }
+    if scope_type != "p0_securities":
+        raise CodexCollectionError("unsupported collection_scope type")
+    codes = value.get("target_security_codes")
+    if (
+        not isinstance(codes, list)
+        or not codes
+        or any(not isinstance(code, str) or not SECURITY_CODE_PATTERN.fullmatch(code) for code in codes)
+        or len(codes) != len(set(codes))
+    ):
+        raise CodexCollectionError(
+            "P0 collection scope requires unique SH/SZ target_security_codes"
+        )
+    source_manifest = value.get("target_source_manifest")
+    if not isinstance(source_manifest, str) or not source_manifest:
+        raise CodexCollectionError("P0 collection scope requires target_source_manifest")
+    source_path = PurePosixPath(source_manifest)
+    if source_path.is_absolute() or ".." in source_path.parts:
+        raise CodexCollectionError("target_source_manifest must be repository-relative")
+    target_date = value.get("target_as_of_date")
+    _date(target_date, label="collection_scope.target_as_of_date")
+    if value.get("priority") != "P0":
+        raise CodexCollectionError("P0 collection scope priority must be P0")
+    result = {
+        "scope_schema_version": 1,
+        "scope_type": "p0_securities",
+        "priority": "P0",
+        "target_source_manifest": source_manifest,
+        "target_as_of_date": target_date,
+        "target_security_codes": list(codes),
+    }
+    allowed = value.get("allowed_event_types")
+    if allowed is not None:
+        if (
+            not isinstance(allowed, list)
+            or not allowed
+            or any(not isinstance(item, str) or not item for item in allowed)
+            or len(allowed) != len(set(allowed))
+        ):
+            raise CodexCollectionError("allowed_event_types must contain unique strings")
+        result["allowed_event_types"] = list(allowed)
+    return result
+
+
 def load_collection_artifact(path: Path) -> Dict[str, Any]:
     try:
         document = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -195,6 +255,7 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(query, str) or not query.strip():
         raise CodexCollectionError("query must be a non-empty string")
     as_of_date = _date(document.get("as_of_date"), label="as_of_date")
+    collection_scope = _validate_collection_scope(document.get("collection_scope"))
     collector = document.get("collector")
     if not isinstance(collector, dict):
         raise CodexCollectionError("collector must be an object")
@@ -254,6 +315,7 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
         "source": source,
         "query": query,
         "as_of_date": as_of_date,
+        "collection_scope": collection_scope,
         "collector": {
             "method": "codex_agent",
             "tool": tool,
@@ -270,6 +332,7 @@ def _existing_snapshot(
     query: str,
     fetched_at: datetime,
     payload_sha256: str,
+    collection_scope: Optional[Dict[str, Any]],
 ) -> Optional[Path]:
     directory = raw_root.joinpath(
         source,
@@ -291,6 +354,7 @@ def _existing_snapshot(
             and metadata.get("fetched_at")
             == fetched_at.isoformat(timespec="microseconds")
             and metadata.get("payload_sha256") == payload_sha256
+            and metadata.get("collection_scope") == collection_scope
         ):
             return path
     return None
@@ -310,6 +374,7 @@ def _save_responses(
             query=collection["query"],
             fetched_at=response["fetched_at"],
             payload_sha256=payload_hash,
+            collection_scope=collection.get("collection_scope"),
         )
         if existing is not None:
             paths.append(existing)
@@ -325,6 +390,7 @@ def _save_responses(
                 raw_field_names=response["raw_field_names"],
                 collection_method="codex_agent",
                 collector_name=collection["collector"]["tool"],
+                collection_scope=collection.get("collection_scope"),
             )
         )
     return paths
@@ -483,6 +549,7 @@ def import_collection(
         "source": collection["source"],
         "query": collection["query"],
         "as_of_date": collection["as_of_date"],
+        "collection_scope": collection.get("collection_scope"),
         "collector": collection["collector"],
         "fetched_at_start": min(fetched_values).isoformat(timespec="microseconds"),
         "fetched_at_end": max(fetched_values).isoformat(timespec="microseconds"),

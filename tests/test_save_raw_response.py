@@ -93,6 +93,26 @@ class SaveRawResponseTests(unittest.TestCase):
                 fetched_at=self.fetched_at,
             )
 
+    def test_preserves_collection_scope_in_raw_and_query_log(self) -> None:
+        scope = {
+            "scope_schema_version": 1,
+            "scope_type": "market_wide",
+            "topic_id": "china_macro_policy_news",
+        }
+        destination = save_raw_response(
+            self.payload,
+            source="iwencai",
+            query="中国宏观政策",
+            raw_root=self.raw_root,
+            fetched_at=self.fetched_at,
+            collection_scope=scope,
+        )
+        envelope = json.loads(destination.read_text(encoding="utf-8"))
+        self.assertEqual(envelope["metadata"]["collection_scope"], scope)
+        log_path = self.raw_root / "_query_log/2026/08/08.jsonl"
+        entry = json.loads(log_path.read_text(encoding="utf-8"))
+        self.assertEqual(entry["collection_scope"], scope)
+
     def test_command_line_entry_point_saves_local_json(self) -> None:
         input_path = Path(self.temporary_directory.name) / "response.json"
         input_path.write_text(json.dumps(self.payload), encoding="utf-8")

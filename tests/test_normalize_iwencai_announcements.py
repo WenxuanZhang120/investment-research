@@ -96,6 +96,49 @@ class NormalizeIwencaiAnnouncementsTests(unittest.TestCase):
         self.assertEqual(event_type, "management_change")
         self.assertEqual(keywords, ["总经理辞职"])
 
+    def test_p0_scope_filters_non_targets_and_non_repurchase_events(self):
+        path = save_raw_response(
+            {
+                "status_code": 0,
+                "data": [
+                    {
+                        "title": "甲公司关于股份回购的公告",
+                        "url": "https://example.test/p0-repurchase",
+                        "publish_time": "2026-08-08T09:30:00+08:00",
+                        "stock_infos": [{"code": "600001", "name": "甲公司"}],
+                    },
+                    {
+                        "title": "乙公司关于股份回购的公告",
+                        "url": "https://example.test/non-p0",
+                        "publish_time": "2026-08-08T09:31:00+08:00",
+                        "stock_infos": [{"code": "600002", "name": "乙公司"}],
+                    },
+                    {
+                        "title": "甲公司2025年年度报告",
+                        "url": "https://example.test/non-repurchase",
+                        "publish_time": "2026-08-08T09:32:00+08:00",
+                        "stock_infos": [{"code": "600001", "name": "甲公司"}],
+                    },
+                ],
+            },
+            source="iwencai",
+            query="P0公司回购",
+            raw_root=self.root / "raw",
+            fetched_at=self.fetched_at,
+            collection_scope={
+                "scope_schema_version": 1,
+                "scope_type": "p0_securities",
+                "priority": "P0",
+                "target_source_manifest": "data/derived/example/manifest.json",
+                "target_as_of_date": "2026-08-07",
+                "target_security_codes": ["600001.SH"],
+                "allowed_event_types": ["share_repurchase"],
+            },
+        )
+        built = build_events(path, repository_root=self.root)
+        self.assertEqual(len(built["records"]), 1)
+        self.assertEqual(built["records"][0]["source_security_code"], "600001")
+
 
 if __name__ == "__main__":
     unittest.main()

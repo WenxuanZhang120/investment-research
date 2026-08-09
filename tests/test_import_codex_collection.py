@@ -113,6 +113,39 @@ class ImportCodexCollectionTests(unittest.TestCase):
         with self.assertRaisesRegex(CodexCollectionError, "credential field"):
             validate_collection_artifact(artifact)
 
+    def test_validates_and_preserves_p0_collection_scope(self):
+        artifact = self.artifact()
+        artifact["collection_scope"] = {
+            "scope_schema_version": 1,
+            "scope_type": "p0_securities",
+            "priority": "P0",
+            "target_source_manifest": "data/derived/example/manifest.json",
+            "target_as_of_date": "2026-08-07",
+            "target_security_codes": ["000001.SZ"],
+        }
+        self.write_artifact(artifact)
+        result = import_collection(
+            self.artifact_path, repository_root=self.root, process=False
+        )
+        snapshot = self.root / result["raw_snapshots"][0]
+        envelope = json.loads(snapshot.read_text(encoding="utf-8"))
+        self.assertEqual(
+            envelope["metadata"]["collection_scope"]["priority"], "P0"
+        )
+
+    def test_rejects_absolute_scope_manifest_path(self):
+        artifact = self.artifact()
+        artifact["collection_scope"] = {
+            "scope_schema_version": 1,
+            "scope_type": "p0_securities",
+            "priority": "P0",
+            "target_source_manifest": "/tmp/private/manifest.json",
+            "target_as_of_date": "2026-08-07",
+            "target_security_codes": ["000001.SZ"],
+        }
+        with self.assertRaisesRegex(CodexCollectionError, "repository-relative"):
+            validate_collection_artifact(artifact)
+
     def test_dry_run_writes_nothing(self):
         self.write_artifact(self.artifact())
         result = import_collection(
