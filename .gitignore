@@ -38,3 +38,7 @@ private/
 
 # Temporary Codex collection inbox. Validated results are moved into data/raw/.
 .codex-collection-inbox/
+
+# Generated Python bytecode is local runtime noise, not research evidence.
+__pycache__/
+*.py[cod]
