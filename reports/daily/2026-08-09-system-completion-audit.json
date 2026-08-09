@@ -2,7 +2,7 @@
   "requirements_version": "1.0.0",
   "complete": false,
   "achieved_count": 11,
-  "requirement_count": 12,
+  "requirement_count": 13,
   "results": [
     {
       "requirement": "repository_integrity",
@@ -34,19 +34,32 @@
       "requirement": "full_market_database",
       "achieved": true,
       "evidence": {
-        "best_security_count": 5543,
+        "universe_id": "cn_sh_sz_main_board_a",
+        "best_security_count": 3193,
         "manifest": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json"
       },
       "gaps": []
+    },
+    {
+      "requirement": "target_etf_coverage",
+      "achieved": false,
+      "evidence": {
+        "universe_id": "cn_listed_nasdaq_sp500_etfs",
+        "best_etf_count": 0,
+        "manifest": null
+      },
+      "gaps": [
+        "target ETF normalized bundle is missing"
+      ]
     },
     {
       "requirement": "complete_financial_database",
       "achieved": true,
       "evidence": {
         "security_count_by_period": {
-          "2024-12-31": 5550,
-          "2025-12-31": 5550,
-          "2026-03-31": 5549
+          "2024-12-31": 3193,
+          "2025-12-31": 3193,
+          "2026-03-31": 3193
         },
         "manifests": {
           "2024-12-31": "data/normalized/runs/iwencai/2026/08/09/e061123b4d1164cda321/manifest.json",
@@ -102,16 +115,13 @@
               "job_id": "2025fy_advanced_supplement",
               "period_end": "2025-12-31",
               "purpose": "annual_current_advanced_inputs",
-              "status": "partial",
-              "snapshot_count": 29,
-              "present_page_count": 29,
-              "present_page_range": [
-                1,
-                29
-              ],
-              "reported_total_count": 5550,
-              "expected_page_count": 56,
-              "next_page": 30,
+              "status": "not_started",
+              "snapshot_count": 0,
+              "present_page_count": 0,
+              "present_page_range": null,
+              "reported_total_count": null,
+              "expected_page_count": null,
+              "next_page": 1,
               "errors": []
             },
             {
@@ -195,7 +205,9 @@
       "requirement": "market_and_portfolio_screening",
       "achieved": true,
       "evidence": {
-        "largest_screening_universe": 5550
+        "universe_id": "cn_sh_sz_main_board_a",
+        "largest_screening_universe": 3193,
+        "manifest": "data/derived/runs/screening/2026/08/07/b8e8a88ce7d140110835/manifest.json"
       },
       "gaps": []
     },

@@ -29,6 +29,7 @@ from scripts.publish_daily_monitoring_report import (  # noqa: E402
 )
 from scripts.repository_paths import repository_relative_path  # noqa: E402
 from scripts.screen_market_research_queue import SCREENER_VERSION  # noqa: E402
+from scripts.investment_universe import load_investment_universe  # noqa: E402
 
 
 STREAMS = {
@@ -433,6 +434,7 @@ def _screening_step(
     normalized_root: Path,
     derived_root: Path,
     rules_path: Path,
+    universe_path: Path,
     repository_root: Path,
     minimum_universe: int,
     timeout: int,
@@ -471,6 +473,7 @@ def _screening_step(
         key=lambda item: (item["period_end"], item["security_count"], item["manifest"].as_posix()),
     )
     rules = _object(rules_path)
+    universe = load_investment_universe(universe_path)
     screening_version = rules.get("screening_version")
     if not isinstance(screening_version, str) or not screening_version:
         raise ResearchReadinessError("screening rules version is missing")
@@ -478,6 +481,7 @@ def _screening_step(
         (
             SCREENER_VERSION,
             screening_version,
+            universe["universe_version"],
             _sha256(selected_market["manifest"]),
             _sha256(selected_metrics["manifest"]),
         )
@@ -509,6 +513,8 @@ def _screening_step(
             manifest.get("bundle_id") != bundle_id
             or manifest.get("screener_version") != SCREENER_VERSION
             or manifest.get("screening_version") != screening_version
+            or manifest.get("universe_version") != universe["universe_version"]
+            or manifest.get("universe_id") != universe["stocks"]["universe_id"]
             or manifest.get("source_market_manifest") != market_public
             or manifest.get("source_metric_manifest") != metric_public
             or not isinstance(table, dict)
@@ -529,6 +535,10 @@ def _screening_step(
                 metric_public,
                 "--rules",
                 repository_relative_path(rules_path, repository_root=repository_root),
+                "--universe",
+                repository_relative_path(
+                    universe_path, repository_root=repository_root
+                ),
                 "--derived-root",
                 repository_relative_path(derived_root, repository_root=repository_root),
             ],
@@ -570,6 +580,9 @@ def resolve_research_pipeline(
     rules_path = _repository_path(
         settings.get("screening_rules"), repository_root=repository_root
     )
+    universe_path = _repository_path(
+        settings.get("investment_universe"), repository_root=repository_root
+    )
     routes = _routes(settings.get("monitoring_routes"))
     timeout = settings.get("timeout_seconds", 300)
     minimum_universe = settings.get("minimum_screening_universe", 5000)
@@ -596,6 +609,7 @@ def resolve_research_pipeline(
         normalized_root=normalized_root,
         derived_root=derived_root,
         rules_path=rules_path,
+        universe_path=universe_path,
         repository_root=repository_root,
         minimum_universe=minimum_universe,
         timeout=timeout,
