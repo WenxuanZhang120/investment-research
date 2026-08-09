@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sys
 import tempfile
@@ -45,6 +46,73 @@ class ValidateRepositoryTests(unittest.TestCase):
             (root / "config").mkdir()
             errors = validate_repository(root)
             self.assertTrue(any("payload hash mismatch" in error for error in errors))
+
+    def test_detects_connector_parts_that_do_not_reconstruct_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            bundle = root / "data/derived/runs/screening/2026/08/07/example"
+            connector = bundle / "github_connector"
+            connector.mkdir(parents=True)
+            source_content = b'{"priority":"P0"}\n'
+            source_sha = hashlib.sha256(source_content).hexdigest()
+            (bundle / "queue.jsonl").write_bytes(source_content)
+            (bundle / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "table": {
+                            "logical_name": "market_research_queue",
+                            "file": "queue.jsonl",
+                            "record_count": 1,
+                            "sha256": source_sha,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            wrong_content = b'{"priority":"P1"}\n'
+            wrong_sha = hashlib.sha256(wrong_content).hexdigest()
+            (connector / "summary.jsonl").write_bytes(source_content)
+            (connector / "part-0001.jsonl").write_bytes(wrong_content)
+            (connector / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "kind": "github_connector_export",
+                        "max_file_size_bytes": 900 * 1024,
+                        "source_manifest": "../manifest.json",
+                        "source_table": {
+                            "file": "queue.jsonl",
+                            "record_count": 1,
+                            "sha256": source_sha,
+                        },
+                        "tables": {
+                            "p0_p1_summary": {
+                                "file": "summary.jsonl",
+                                "record_count": 1,
+                                "priority_counts": {"P0": 1, "P1": 0},
+                                "byte_size": len(source_content),
+                                "sha256": source_sha,
+                            },
+                            "full_queue": {
+                                "record_count": 1,
+                                "partitions": [
+                                    {
+                                        "file": "part-0001.jsonl",
+                                        "record_count": 1,
+                                        "byte_size": len(wrong_content),
+                                        "sha256": wrong_sha,
+                                    }
+                                ],
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            errors = validate_repository(root, tracked_paths=[])
+            self.assertTrue(
+                any("do not reconstruct source queue" in error for error in errors)
+            )
 
     def test_detects_local_absolute_paths_in_public_artifacts(self):
         examples = (

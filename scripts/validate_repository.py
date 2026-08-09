@@ -177,6 +177,74 @@ def _validate_manifests(root: Path, errors: List[str]) -> None:
                 )
 
 
+def _validate_github_connector_exports(root: Path, errors: List[str]) -> None:
+    pattern = "runs/screening/**/github_connector/manifest.json"
+    for path in (root / "data" / "derived").glob(pattern):
+        try:
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+            if manifest.get("kind") != "github_connector_export":
+                raise ValueError("unexpected connector manifest kind")
+            limit = manifest["max_file_size_bytes"]
+            if not isinstance(limit, int) or limit <= 0 or limit >= 1024 * 1024:
+                raise ValueError("connector file limit must be between 1 byte and 1 MiB")
+
+            source_manifest_path = (path.parent / manifest["source_manifest"]).resolve()
+            source_manifest_path.relative_to(root.resolve())
+            source_manifest = json.loads(
+                source_manifest_path.read_text(encoding="utf-8")
+            )
+            source_table = source_manifest["table"]
+            declared_source = manifest["source_table"]
+            for field in ("file", "record_count", "sha256"):
+                if declared_source.get(field) != source_table.get(field):
+                    raise ValueError(f"source table {field} mismatch")
+
+            tables = manifest["tables"]
+            summary = tables["p0_p1_summary"]
+            summary_path = path.parent / summary["file"]
+            if summary_path.stat().st_size != summary.get("byte_size"):
+                raise ValueError("P0/P1 summary byte size mismatch")
+            if summary_path.stat().st_size > limit:
+                raise ValueError("P0/P1 summary exceeds connector file limit")
+            observed_priorities = {"P0": 0, "P1": 0}
+            observed_summary_count = 0
+            with summary_path.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    if not line.strip():
+                        continue
+                    priority = json.loads(line).get("priority")
+                    if priority not in observed_priorities:
+                        raise ValueError("P0/P1 summary contains another priority")
+                    observed_priorities[priority] += 1
+                    observed_summary_count += 1
+            if observed_summary_count != summary.get("record_count"):
+                raise ValueError("P0/P1 summary record count mismatch")
+            if observed_priorities != summary.get("priority_counts"):
+                raise ValueError("P0/P1 summary priority counts mismatch")
+
+            digest = hashlib.sha256()
+            observed_full_count = 0
+            for partition in tables["full_queue"]["partitions"]:
+                partition_path = path.parent / partition["file"]
+                content = partition_path.read_bytes()
+                if len(content) != partition.get("byte_size"):
+                    raise ValueError(f"partition byte size mismatch: {partition['file']}")
+                if len(content) > limit:
+                    raise ValueError(f"partition exceeds connector limit: {partition['file']}")
+                digest.update(content)
+                observed_full_count += partition["record_count"]
+            if observed_full_count != tables["full_queue"].get("record_count"):
+                raise ValueError("connector partition record count mismatch")
+            if observed_full_count != source_table.get("record_count"):
+                raise ValueError("connector record count differs from source table")
+            if digest.hexdigest() != source_table.get("sha256"):
+                raise ValueError("connector partitions do not reconstruct source queue")
+        except (OSError, KeyError, TypeError, ValueError) as error:
+            errors.append(
+                f"{_label(root, path)}: invalid GitHub connector export ({error})"
+            )
+
+
 def _validate_json_documents(root: Path, errors: List[str]) -> None:
     paths = list((root / "config").glob("*.json"))
     paths.extend((root / "portfolio").glob("*.template.json"))
@@ -364,6 +432,7 @@ def validate_repository(
     raw_metadata = _validate_raw(root, errors)
     _validate_query_logs(root, raw_metadata, errors)
     _validate_manifests(root, errors)
+    _validate_github_connector_exports(root, errors)
     _validate_json_documents(root, errors)
     _validate_collection_scope(root, errors)
     _validate_file_sizes(root, errors)

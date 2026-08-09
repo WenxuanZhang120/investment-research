@@ -7,7 +7,6 @@ import argparse
 import hashlib
 import json
 import math
-import os
 import shutil
 import sys
 import tempfile
@@ -29,6 +28,8 @@ from scripts.investment_universe import (  # noqa: E402
 DEFAULT_RULES = REPOSITORY_ROOT / "config" / "screening_rules.json"
 DEFAULT_DERIVED_ROOT = REPOSITORY_ROOT / "data" / "derived"
 SCREENER_VERSION = "1.1.0"
+CONNECTOR_DIRECTORY = "github_connector"
+CONNECTOR_MAX_FILE_BYTES = 900 * 1024
 
 
 class ScreeningError(ValueError):
@@ -54,6 +55,139 @@ def _iter_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
                 if not isinstance(value, dict):
                     raise ScreeningError(f"row must be an object: {path}")
                 yield value
+
+
+def _jsonl_line(record: Dict[str, Any]) -> bytes:
+    return (
+        json.dumps(
+            record,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _partition_jsonl(
+    records: Sequence[Dict[str, Any]], *, max_file_bytes: int
+) -> List[Dict[str, Any]]:
+    if max_file_bytes <= 0:
+        raise ScreeningError("connector max_file_bytes must be positive")
+    partitions: List[Dict[str, Any]] = []
+    lines: List[bytes] = []
+    size = 0
+    for record in records:
+        line = _jsonl_line(record)
+        if len(line) > max_file_bytes:
+            raise ScreeningError(
+                f"one screening row exceeds connector limit: {record.get('security_code')}"
+            )
+        if lines and size + len(line) > max_file_bytes:
+            partitions.append({"content": b"".join(lines), "records": len(lines)})
+            lines = []
+            size = 0
+        lines.append(line)
+        size += len(line)
+    if lines:
+        partitions.append({"content": b"".join(lines), "records": len(lines)})
+    return partitions
+
+
+def write_github_connector_export(
+    records: Sequence[Dict[str, Any]],
+    *,
+    destination: Path,
+    source_table: Dict[str, Any],
+    source_bundle_id: str,
+    max_file_bytes: int = CONNECTOR_MAX_FILE_BYTES,
+) -> Path:
+    """Write a small-file mirror for GitHub connectors that cannot inline >1 MiB."""
+    destination = Path(destination)
+    if destination.exists():
+        raise FileExistsError(f"refusing to overwrite connector export: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=".github-connector-", dir=destination.parent))
+    try:
+        summary_records = [
+            record for record in records if record.get("priority") in {"P0", "P1"}
+        ]
+        summary_content = b"".join(_jsonl_line(record) for record in summary_records)
+        if len(summary_content) > max_file_bytes:
+            raise ScreeningError(
+                "P0/P1 connector summary exceeds the configured small-file limit"
+            )
+        summary_file = "market_research_queue_p0_p1.jsonl"
+        (staging / summary_file).write_bytes(summary_content)
+
+        partition_entries = []
+        for index, partition in enumerate(
+            _partition_jsonl(records, max_file_bytes=max_file_bytes), start=1
+        ):
+            filename = f"market_research_queue.part-{index:04d}.jsonl"
+            content = partition["content"]
+            (staging / filename).write_bytes(content)
+            partition_entries.append(
+                {
+                    "file": filename,
+                    "record_count": partition["records"],
+                    "byte_size": len(content),
+                    "sha256": hashlib.sha256(content).hexdigest(),
+                }
+            )
+
+        priority_counts = {
+            priority: sum(record.get("priority") == priority for record in records)
+            for priority in ("P0", "P1")
+        }
+        manifest = {
+            "bundle_schema_version": 1,
+            "kind": "github_connector_export",
+            "source_bundle_id": source_bundle_id,
+            "source_manifest": "../manifest.json",
+            "source_table": {
+                "file": source_table["file"],
+                "record_count": source_table["record_count"],
+                "sha256": source_table["sha256"],
+            },
+            "max_file_size_bytes": max_file_bytes,
+            "tables": {
+                "p0_p1_summary": {
+                    "logical_name": "market_research_queue_p0_p1",
+                    "file": summary_file,
+                    "primary_key": [
+                        "security_code",
+                        "as_of_date",
+                        "screening_version",
+                    ],
+                    "record_count": len(summary_records),
+                    "priority_counts": priority_counts,
+                    "byte_size": len(summary_content),
+                    "sha256": hashlib.sha256(summary_content).hexdigest(),
+                },
+                "full_queue": {
+                    "logical_name": "market_research_queue_connector_parts",
+                    "primary_key": [
+                        "security_code",
+                        "as_of_date",
+                        "screening_version",
+                    ],
+                    "record_count": len(records),
+                    "partitions": partition_entries,
+                },
+            },
+        }
+        (staging / "manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        staging.rename(destination)
+    except Exception:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise
+    return destination
 
 
 def _load_valuations(manifest_path: Path) -> Dict[str, Dict[str, Any]]:
@@ -291,10 +425,7 @@ def write_screen(
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".screening-", dir=destination.parent))
     try:
-        content = (
-            "\n".join(json.dumps(x, ensure_ascii=False, allow_nan=False, separators=(",", ":"), sort_keys=True) for x in built["records"])
-            + "\n"
-        ).encode()
+        content = b"".join(_jsonl_line(x) for x in built["records"])
         (staging / "market_research_queue.jsonl").write_bytes(content)
         manifest = {
             "bundle_schema_version": 1,
@@ -325,6 +456,12 @@ def write_screen(
         }
         (staging / "manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        write_github_connector_export(
+            built["records"],
+            destination=staging / CONNECTOR_DIRECTORY,
+            source_table=manifest["table"],
+            source_bundle_id=built["bundle_id"],
         )
         staging.rename(destination)
     except Exception:

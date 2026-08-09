@@ -1,0 +1,65 @@
+{
+  "bundle_schema_version": 1,
+  "kind": "github_connector_export",
+  "source_bundle_id": "6de6ed0c237f2e02ed0f",
+  "source_manifest": "../manifest.json",
+  "source_table": {
+    "file": "market_research_queue.jsonl",
+    "record_count": 5550,
+    "sha256": "ff019b382b9beada9ba74ebc91a0ee56caae456661e73c9dff39f6280d89f415"
+  },
+  "max_file_size_bytes": 921600,
+  "tables": {
+    "p0_p1_summary": {
+      "logical_name": "market_research_queue_p0_p1",
+      "file": "market_research_queue_p0_p1.jsonl",
+      "primary_key": [
+        "security_code",
+        "as_of_date",
+        "screening_version"
+      ],
+      "record_count": 400,
+      "priority_counts": {
+        "P0": 40,
+        "P1": 360
+      },
+      "byte_size": 211821,
+      "sha256": "337f256a80081733c8b91e322b76d675046739263b708240d978b8afc383752f"
+    },
+    "full_queue": {
+      "logical_name": "market_research_queue_connector_parts",
+      "primary_key": [
+        "security_code",
+        "as_of_date",
+        "screening_version"
+      ],
+      "record_count": 5550,
+      "partitions": [
+        {
+          "file": "market_research_queue.part-0001.jsonl",
+          "record_count": 1739,
+          "byte_size": 921169,
+          "sha256": "584cc9eff1fcefb8c22895d1983630eb576957c13a06e26814f515dcfc3944d1"
+        },
+        {
+          "file": "market_research_queue.part-0002.jsonl",
+          "record_count": 1737,
+          "byte_size": 921229,
+          "sha256": "66194190346e9ba46c2469854ddee0f8e15d44f0e45aac462ab21eef49607319"
+        },
+        {
+          "file": "market_research_queue.part-0003.jsonl",
+          "record_count": 2062,
+          "byte_size": 921495,
+          "sha256": "18762d221f02ad6ef49e659550e72b6379053eadd4bbaded95d583b4a97daefb"
+        },
+        {
+          "file": "market_research_queue.part-0004.jsonl",
+          "record_count": 12,
+          "byte_size": 5013,
+          "sha256": "9c01d72868e95e9323c765b8bb0d643a8a240f18bbb3fd1ee72e7fad13cbbf27"
+        }
+      ]
+    }
+  }
+}
