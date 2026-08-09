@@ -23,7 +23,7 @@ from scripts.repository_paths import repository_relative_path  # noqa: E402
 DEFAULT_TAXONOMY = REPOSITORY_ROOT / "config" / "event_taxonomy.json"
 DEFAULT_NORMALIZED_ROOT = REPOSITORY_ROOT / "data" / "normalized"
 PROJECT_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
-NORMALIZER_VERSION = "1.1.0"
+NORMALIZER_VERSION = "1.2.0"
 
 
 class AnnouncementNormalizationError(ValueError):
@@ -100,6 +100,29 @@ def _source_security_identity(item: Dict[str, Any]) -> Tuple[Optional[str], Opti
     )
 
 
+def _scope_allows(
+    item: Dict[str, Any], metadata: Dict[str, Any], event_type: str
+) -> bool:
+    scope = metadata.get("collection_scope")
+    if not isinstance(scope, dict) or scope.get("scope_type") == "market_wide":
+        return True
+    if scope.get("scope_type") != "p0_securities":
+        raise AnnouncementNormalizationError("unsupported collection scope")
+    allowed_types = scope.get("allowed_event_types")
+    if isinstance(allowed_types, list) and event_type not in allowed_types:
+        return False
+    source_code, _ = _source_security_identity(item)
+    if source_code is None:
+        return False
+    source_base = source_code.split(".", 1)[0]
+    targets = scope.get("target_security_codes")
+    if not isinstance(targets, list):
+        raise AnnouncementNormalizationError("P0 collection scope has no target codes")
+    return source_base in {
+        code.split(".", 1)[0] for code in targets if isinstance(code, str)
+    }
+
+
 def build_events(
     snapshot_path: Path,
     *,
@@ -121,6 +144,8 @@ def build_events(
             raise AnnouncementNormalizationError(f"data[{index}] url is required")
         published_at = _timestamp(item.get("publish_time"))
         event_type, keywords = _classify(title, taxonomy)
+        if not _scope_allows(item, metadata, event_type):
+            continue
         source_security_code, security_name = _source_security_identity(item)
         identity = "\0".join(("iwencai", url, published_at, title)).encode("utf-8")
         event_id = hashlib.sha256(identity).hexdigest()[:24]
@@ -192,6 +217,7 @@ def write_bundle(built: Dict[str, Any], *, normalized_root: Path = DEFAULT_NORMA
             "source": "iwencai",
             "source_raw_record_id": built["metadata"]["record_id"],
             "fetched_at": built["metadata"]["fetched_at"],
+            "collection_scope": built["metadata"].get("collection_scope"),
             "coverage": {
                 "record_count": len(built["records"]),
                 "event_types": sorted({x["event_type"] for x in built["records"]}),

@@ -8,15 +8,17 @@
   "trading_day": {
     "stock_market_max_pages": 32,
     "etf_max_pages": 2,
-    "announcement_max_pages": 1,
-    "news_max_pages": 1,
+    "p0_announcement_max_requests": 2,
+    "p0_company_news_max_requests": 2,
+    "macro_policy_news_max_requests": 3,
     "financial_max_pages": 32
   },
   "non_trading_day": {
     "stock_market_max_pages": 0,
     "etf_max_pages": 2,
-    "announcement_max_pages": 1,
-    "news_max_pages": 1,
+    "p0_announcement_max_requests": 2,
+    "p0_company_news_max_requests": 2,
+    "macro_policy_news_max_requests": 3,
     "financial_max_pages": 60
   },
   "stop_on_quota_error": true,

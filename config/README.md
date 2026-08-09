@@ -55,6 +55,8 @@
 
 `investment_universe.json` 固定当前可投资范围：个股只保留沪深主板，排除北交所、创业板和科创板；ETF 独立覆盖境内上市、跟踪纳斯达克 100 或标普 500 的产品。`collection_budget.json` 固定每日安全调用预算、缓冲额度和各数据流最大页数，达到额度后停止并从已保存页续跑。
 
+公司级新闻和股份回购公告使用 `latest_p0` 范围，由 `scripts/resolve_monitoring_collection_scope.py` 从最新研究队列生成实际证券名单；宏观、政策和行业新闻使用 `market_wide` 范围。P0 Raw 会保存目标清单及来源清单路径，标准化层再次过滤范围外公司。采集层只分类和保留事实，不判断政策或事件属于利好还是利空。
+
 当前配置明确设置 `llm_calls_allowed = false` 和 `external_collection_enabled = false`。因此默认运行只读取现有仓库、检查采集计划状态、执行系统完成度审计和仓库验证，不会调用 iWencai。未来启用采集必须经过独立审查，并继续保证 Python 确定性运行、Raw 先保存和失败即停止。
 
 ## 修改规则
