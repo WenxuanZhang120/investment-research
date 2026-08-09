@@ -1,0 +1,225 @@
+{
+  "run_schema_version": 1,
+  "run_id": "af9600c95cccf4ff51b3",
+  "pipeline_version": "1.2.0",
+  "config_sha256": "97f925754d4612a72c78932125a64092facc07ebbb29ea878ef332af9a37c45f",
+  "llm_calls_allowed": false,
+  "external_collection_enabled": false,
+  "readiness": {
+    "schema_version": 1,
+    "status": "work_planned",
+    "planned_step_count": 1,
+    "incomplete_job_count": 3,
+    "financial_jobs": [
+      {
+        "job_id": "2026q1_base_resume",
+        "period_end": "2026-03-31",
+        "collection_status": "complete",
+        "collection_errors": [],
+        "normalization_status": "up_to_date",
+        "normalized_manifest": "data/normalized/runs/iwencai/2026/08/08/958d1944b9726944ca39/manifest.json"
+      },
+      {
+        "job_id": "2024fy_advanced_inputs",
+        "period_end": "2024-12-31",
+        "collection_status": "complete",
+        "collection_errors": [],
+        "normalization_status": "up_to_date",
+        "normalized_manifest": "data/normalized/runs/iwencai/2026/08/09/e061123b4d1164cda321/manifest.json"
+      },
+      {
+        "job_id": "2025fy_advanced_supplement",
+        "period_end": "2025-12-31",
+        "collection_status": "partial",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      },
+      {
+        "job_id": "2025q1_advanced_inputs",
+        "period_end": "2025-03-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      },
+      {
+        "job_id": "2026q1_advanced_supplement",
+        "period_end": "2026-03-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      }
+    ],
+    "basic_financial_metrics": [
+      {
+        "job_id": "2026q1_base_resume",
+        "status": "up_to_date",
+        "source_manifest": "data/normalized/runs/iwencai/2026/08/08/958d1944b9726944ca39/manifest.json",
+        "derived_manifest": "data/derived/runs/iwencai/2026/08/08/588bb40581c5187e678c/manifest.json"
+      }
+    ],
+    "advanced_financial_metrics": {
+      "job_ids": [
+        "2024fy_advanced_inputs",
+        "2025fy_advanced_supplement",
+        "2025q1_advanced_inputs",
+        "2026q1_advanced_supplement"
+      ],
+      "status": "waiting_for_normalized_inputs",
+      "waiting_for": [
+        "2025fy_advanced_supplement",
+        "2025q1_advanced_inputs",
+        "2026q1_advanced_supplement"
+      ],
+      "source_manifests": [
+        "data/normalized/runs/iwencai/2026/08/09/e061123b4d1164cda321/manifest.json"
+      ],
+      "derived_manifest": null
+    },
+    "research": {
+      "schema_version": 1,
+      "status": "work_planned",
+      "planned_step_count": 1,
+      "monitoring": {
+        "matched_snapshot_count": 2,
+        "routes": [
+          {
+            "route_id": "recent_share_repurchase_announcements",
+            "stream": "announcements",
+            "query_sha256": "9e33307e2740ad6e47caedfc731b62a2b52ba5987584ef734fd6439df2dada5e",
+            "matched_snapshot_count": 1,
+            "snapshots": [
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/08/20260808T202503038133+0800_cf0031976e71132102a3.json",
+                "raw_record_id": "cf0031976e71132102a3",
+                "bundle_id": "27e61738dcedc4a68949",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/08/27e61738dcedc4a68949/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-08"
+              }
+            ],
+            "reports": [
+              {
+                "as_of_date": "2026-08-08",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/events/2026/08/08/41318e1fb4611ceeab78/manifest.json",
+                "status": "up_to_date"
+              }
+            ]
+          },
+          {
+            "route_id": "recent_important_company_news",
+            "stream": "news",
+            "query_sha256": "813ac420d3bca31b1cbaeb844619b9303a05785dae9e074e6eb3d42b65b13627",
+            "matched_snapshot_count": 1,
+            "snapshots": [
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/08/20260808T205428659404+0800_96d5150ceb8d76ac65e0.json",
+                "raw_record_id": "96d5150ceb8d76ac65e0",
+                "bundle_id": "f6622a5fe5a9e1a3ca3d",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/08/f6622a5fe5a9e1a3ca3d/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-08"
+              }
+            ],
+            "reports": [
+              {
+                "as_of_date": "2026-08-08",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/08/8c8c21ed37849f906394/manifest.json",
+                "status": "up_to_date"
+              }
+            ]
+          }
+        ]
+      },
+      "screening": {
+        "status": "planned",
+        "as_of_date": "2026-08-07",
+        "financial_period_end": "2026-03-31",
+        "market_manifest": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json",
+        "metric_manifest": "data/derived/runs/iwencai/2026/08/08/588bb40581c5187e678c/manifest.json",
+        "derived_manifest": "data/derived/runs/screening/2026/08/07/175c48d8b6e49a64dc39/manifest.json"
+      }
+    }
+  },
+  "status": "succeeded",
+  "started_at": "2026-08-09T16:00:00.000000+08:00",
+  "finished_at": "2026-08-09T07:25:09.589101+00:00",
+  "step_count": 4,
+  "steps": [
+    {
+      "stage": "status",
+      "step_id": "financial_collection_status",
+      "command": [
+        "scripts/run_financial_collection_plan.py",
+        "status"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T07:24:31.352465+00:00",
+      "finished_at": "2026-08-09T07:24:32.515770+00:00",
+      "stdout_sha256": "c923a150242b0877c9f77485e9d0c0bfe42296d92d8565aaf8ad8025e685789b",
+      "stdout_bytes": 2068,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "derivation",
+      "step_id": "screen_market_175c48d8b6e49a64dc39",
+      "command": [
+        "scripts/screen_market_research_queue.py",
+        "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json",
+        "data/derived/runs/iwencai/2026/08/08/588bb40581c5187e678c/manifest.json",
+        "--rules",
+        "config/screening_rules.json",
+        "--derived-root",
+        "data/derived"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T07:24:32.515839+00:00",
+      "finished_at": "2026-08-09T07:24:33.261843+00:00",
+      "stdout_sha256": "01dac6447be0418f7aa42acd8946094284915a39688fc05d64da8567a43d403d",
+      "stdout_bytes": 60,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "system_completion_audit",
+      "command": [
+        "scripts/audit_system_completion.py"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T07:24:33.261906+00:00",
+      "finished_at": "2026-08-09T07:24:54.060020+00:00",
+      "stdout_sha256": "b5a348f5455092d2f736120a25f7355af4e619335de226163f6eb333bcdd6564",
+      "stdout_bytes": 6841,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "validation",
+      "step_id": "repository_integrity",
+      "command": [
+        "scripts/validate_repository.py"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-09T07:24:54.060218+00:00",
+      "finished_at": "2026-08-09T07:25:09.589044+00:00",
+      "stdout_sha256": "bef69c1ffe676156336680a5bd19dfef400a8b9e7fc47005f02b8e6edd0c8e67",
+      "stdout_bytes": 39,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    }
+  ]
+}

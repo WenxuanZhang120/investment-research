@@ -1,0 +1,37 @@
+{
+  "bundle_schema_version": 1,
+  "calculator_version": "1.0.1",
+  "metric_definition_version": "1.0.0",
+  "bundle_id": "588bb40581c5187e678c",
+  "source_financial_bundle_id": "958d1944b9726944ca39",
+  "source_financial_manifest": "data/normalized/runs/iwencai/2026/08/08/958d1944b9726944ca39/manifest.json",
+  "source_fetched_at_start": "2026-08-08T20:05:21.701421+08:00",
+  "source_fetched_at_end": "2026-08-09T15:15:48.904158+08:00",
+  "coverage": {
+    "security_count": 5549,
+    "period_ends": [
+      "2026-03-31"
+    ],
+    "metric_count": 5,
+    "record_count": 27745,
+    "calculated_count": 27723,
+    "unavailable_count": 22
+  },
+  "table": {
+    "logical_name": "financial_metrics",
+    "primary_key": [
+      "security_code",
+      "period_end",
+      "metric_name"
+    ],
+    "partition_key": "period_end",
+    "partitions": [
+      {
+        "file": "financial_metrics_2026-03-31.jsonl",
+        "period_end": "2026-03-31",
+        "record_count": 27745,
+        "sha256": "cd3dbac98891b5e16cb75c1e5551bdd14f2ec882805ec594d336e4caf7376afc"
+      }
+    ]
+  }
+}
