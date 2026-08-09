@@ -179,6 +179,7 @@ class GuardedFinancialCollectionTests(unittest.TestCase):
                 "GITHUB_REPOSITORY": "owner/repository",
                 "GITHUB_RUN_ID": "123",
             },
+            clear=True,
         ):
             result = self.execute(
                 action="collect",
