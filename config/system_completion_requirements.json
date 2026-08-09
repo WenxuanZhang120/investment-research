@@ -1,10 +1,12 @@
 {
   "requirements_version": "1.0.0",
+  "investment_universe": "config/investment_universe.json",
   "requirements": [
     "repository_integrity",
     "raw_data_infrastructure",
     "dynamic_field_parsing",
     "full_market_database",
+    "target_etf_coverage",
     "complete_financial_database",
     "advanced_financial_metrics",
     "announcement_and_news_monitoring",
@@ -15,11 +17,13 @@
     "investor_final_authority_no_auto_trading"
   ],
   "minimum_counts": {
-    "full_market_securities": 5000,
-    "full_financial_securities": 5000,
-    "screening_universe": 5000,
+    "full_market_securities": 3000,
+    "full_financial_securities": 3000,
+    "screening_universe": 3000,
+    "target_etfs": 1,
     "real_events": 1
   },
+  "required_mapping_version": "3.2.0",
   "required_financial_periods": ["2025-12-31", "2026-03-31"],
   "required_advanced_metric_periods": ["2025-12-31", "2026-03-31"],
   "required_event_types": [

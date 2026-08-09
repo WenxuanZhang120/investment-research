@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "budget_version": "1.0.0",
+  "daily_observed_limit": 100,
+  "daily_safe_limit": 90,
+  "reserved_requests": 10,
+  "page_size": 100,
+  "trading_day": {
+    "stock_market_max_pages": 32,
+    "etf_max_pages": 2,
+    "announcement_max_pages": 1,
+    "news_max_pages": 1,
+    "financial_max_pages": 32
+  },
+  "non_trading_day": {
+    "stock_market_max_pages": 0,
+    "etf_max_pages": 2,
+    "announcement_max_pages": 1,
+    "news_max_pages": 1,
+    "financial_max_pages": 60
+  },
+  "stop_on_quota_error": true,
+  "resume_from_saved_page": true
+}

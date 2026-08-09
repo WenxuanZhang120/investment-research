@@ -147,6 +147,52 @@ class ImportCodexCollectionTests(unittest.TestCase):
         validated = validate_collection_artifact(artifact)
         self.assertEqual(validated["dataset_kind"], "announcements")
 
+    def test_etf_collection_uses_independent_raw_first_normalizer(self):
+        artifact = self.artifact()
+        artifact["collection_id"] = "daily-etf-20260809"
+        artifact["dataset_kind"] = "etf"
+        artifact["query"] = "境内纳指与标普ETF测试"
+        artifact["as_of_date"] = "2026-08-09"
+        artifact["collector"]["tool"] = "hithink-etf-selector"
+        artifact["responses"][0]["fetched_at"] = "2026-08-09T19:00:00+08:00"
+        artifact["responses"][0]["raw_response"] = {
+            "success": True,
+            "page": 1,
+            "limit": 100,
+            "code_count": 1,
+            "datas": [
+                {
+                    "ETF代码": "513100.SH",
+                    "ETF简称": "纳指ETF",
+                    "跟踪指数": "纳斯达克100指数",
+                    "基金类型": "跨境ETF",
+                }
+            ],
+        }
+        artifact["responses"][0]["raw_field_names"] = [
+            "ETF代码",
+            "ETF简称",
+            "基金类型",
+            "跟踪指数",
+        ]
+        self.write_artifact(artifact)
+        result = import_collection(
+            self.artifact_path,
+            repository_root=self.root,
+            process=True,
+        )
+        self.assertEqual(result["dataset_kind"], "etf")
+        self.assertEqual(len(result["normalized_outputs"]), 1)
+        manifest = json.loads(
+            (
+                self.root
+                / result["normalized_outputs"][0]
+                / "manifest.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["coverage"]["etf_count"], 1)
+        self.assertEqual(manifest["universe_id"], "cn_listed_nasdaq_sp500_etfs")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,6 +18,10 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.repository_paths import repository_relative_path  # noqa: E402
+from scripts.investment_universe import (  # noqa: E402
+    InvestmentUniverseError,
+    load_investment_universe,
+)
 
 
 GITHUB_FILE_LIMIT = 100 * 1024 * 1024
@@ -185,6 +189,69 @@ def _validate_json_documents(root: Path, errors: List[str]) -> None:
             errors.append(f"{_label(root, path)}: invalid JSON ({error})")
 
 
+def _validate_collection_scope(root: Path, errors: List[str]) -> None:
+    universe_path = root / "config/investment_universe.json"
+    budget_path = root / "config/collection_budget.json"
+    daily_path = root / "config/codex_daily_collection.json"
+    requirements_path = root / "config/system_completion_requirements.json"
+    if not any(path.exists() for path in (universe_path, budget_path)):
+        return
+    if not all(path.is_file() for path in (universe_path, budget_path, daily_path)):
+        errors.append("collection scope configuration is incomplete")
+        return
+    try:
+        universe = load_investment_universe(universe_path)
+        budget = json.loads(budget_path.read_text(encoding="utf-8"))
+        daily = json.loads(daily_path.read_text(encoding="utf-8"))
+        if budget.get("schema_version") != 1:
+            raise ValueError("collection budget schema_version must be 1")
+        observed = budget.get("daily_observed_limit")
+        safe = budget.get("daily_safe_limit")
+        reserve = budget.get("reserved_requests")
+        page_size = budget.get("page_size")
+        if any(
+            not isinstance(value, int) or value < 0
+            for value in (observed, safe, reserve, page_size)
+        ) or page_size == 0:
+            raise ValueError("collection budget limits must be non-negative integers")
+        if safe + reserve > observed:
+            raise ValueError("safe limit plus reserve exceeds observed daily limit")
+        for day_type in ("trading_day", "non_trading_day"):
+            allocations = budget.get(day_type)
+            if not isinstance(allocations, dict) or any(
+                not isinstance(value, int) or value < 0
+                for value in allocations.values()
+            ):
+                raise ValueError(f"{day_type} allocations must be non-negative integers")
+            if sum(allocations.values()) > safe:
+                raise ValueError(f"{day_type} allocations exceed daily safe limit")
+        if daily.get("investment_universe") != "config/investment_universe.json":
+            raise ValueError("daily plan must reference the investment-universe config")
+        if daily.get("collection_budget") != "config/collection_budget.json":
+            raise ValueError("daily plan must reference the collection-budget config")
+        tasks = daily.get("tasks")
+        if not isinstance(tasks, list):
+            raise ValueError("daily collection tasks must be an array")
+        by_kind = {
+            task.get("dataset_kind"): task
+            for task in tasks
+            if isinstance(task, dict)
+        }
+        if by_kind.get("etf", {}).get("tool") != "hithink-etf-selector":
+            raise ValueError("daily plan is missing the dedicated ETF collection task")
+        if by_kind.get("market", {}).get("complete_pagination_required") is not True:
+            raise ValueError("stock-market collection must require complete pagination")
+        if requirements_path.is_file():
+            requirements = json.loads(requirements_path.read_text(encoding="utf-8"))
+            minimum = requirements.get("minimum_counts", {})
+            if minimum.get("full_market_securities") != universe["stocks"][
+                "minimum_expected_count"
+            ]:
+                raise ValueError("market audit threshold disagrees with stock universe")
+    except (InvestmentUniverseError, OSError, TypeError, ValueError) as error:
+        errors.append(f"collection scope configuration is invalid ({error})")
+
+
 def _validate_file_sizes(root: Path, errors: List[str]) -> None:
     for path in root.rglob("*"):
         if not path.is_file() or ".git" in path.parts or "private" in path.parts:
@@ -271,6 +338,7 @@ def validate_repository(
     _validate_query_logs(root, raw_metadata, errors)
     _validate_manifests(root, errors)
     _validate_json_documents(root, errors)
+    _validate_collection_scope(root, errors)
     _validate_file_sizes(root, errors)
     if tracked_paths is None:
         tracked_paths = _git_tracked_paths(root)
