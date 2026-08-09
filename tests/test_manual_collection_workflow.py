@@ -38,6 +38,9 @@ class ManualCollectionWorkflowTests(unittest.TestCase):
         self.assertNotIn("run_financial_collection_plan.py collect", self.content)
 
     def test_uploads_audit_and_raw_evidence_without_repository_writes(self):
+        self.assertIn("scripts/import_financial_collection_artifact.py", self.content)
+        self.assertIn("--dry-run", self.content)
+        self.assertIn("inputs.action == 'collect' && success()", self.content)
         self.assertIn("uses: actions/upload-artifact@v4", self.content)
         self.assertIn("path: action-artifacts/financial-collection/", self.content)
         self.assertIn("if: always()", self.content)

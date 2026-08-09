@@ -68,6 +68,12 @@ jobs:
           --job "$REQUESTED_JOB"
           --confirmation "$COLLECTION_CONFIRMATION"
           --artifact-root action-artifacts/financial-collection
+      - name: Validate successful collection artifact for safe import
+        if: ${{ inputs.action == 'collect' && success() }}
+        run: >-
+          python3 scripts/import_financial_collection_artifact.py
+          action-artifacts/financial-collection
+          --dry-run
       - name: Upload collection audit and new Raw evidence
         if: always()
         uses: actions/upload-artifact@v4
