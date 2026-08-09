@@ -1,0 +1,232 @@
+{
+  "requirements_version": "1.0.0",
+  "complete": false,
+  "achieved_count": 11,
+  "requirement_count": 12,
+  "results": [
+    {
+      "requirement": "repository_integrity",
+      "achieved": true,
+      "evidence": {
+        "validator": "scripts/validate_repository.py",
+        "error_count": 0
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "raw_data_infrastructure",
+      "achieved": true,
+      "evidence": {
+        "raw_snapshot_count": 259,
+        "query_log_count": 2
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "dynamic_field_parsing",
+      "achieved": true,
+      "evidence": {
+        "mapping_version": "3.2.0"
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "full_market_database",
+      "achieved": true,
+      "evidence": {
+        "best_security_count": 5543,
+        "manifest": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json"
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "complete_financial_database",
+      "achieved": true,
+      "evidence": {
+        "security_count_by_period": {
+          "2024-12-31": 5550,
+          "2025-12-31": 5550,
+          "2026-03-31": 5549
+        },
+        "manifests": {
+          "2024-12-31": "data/normalized/runs/iwencai/2026/08/09/e061123b4d1164cda321/manifest.json",
+          "2025-12-31": "data/normalized/runs/iwencai/2026/08/08/085444945234b7d8d601/manifest.json",
+          "2026-03-31": "data/normalized/runs/iwencai/2026/08/08/958d1944b9726944ca39/manifest.json"
+        }
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "advanced_financial_metrics",
+      "achieved": false,
+      "evidence": {
+        "calculated_record_count": 0,
+        "calculated_periods": [],
+        "collection_plan": {
+          "plan_version": "1.0.0",
+          "all_collections_complete": false,
+          "jobs": [
+            {
+              "job_id": "2026q1_base_resume",
+              "period_end": "2026-03-31",
+              "purpose": "complete_existing_base_financial_batch",
+              "status": "complete",
+              "snapshot_count": 56,
+              "present_page_count": 56,
+              "present_page_range": [
+                1,
+                56
+              ],
+              "reported_total_count": 5550,
+              "expected_page_count": 56,
+              "next_page": null,
+              "errors": []
+            },
+            {
+              "job_id": "2024fy_advanced_inputs",
+              "period_end": "2024-12-31",
+              "purpose": "annual_comparable_and_advanced_inputs",
+              "status": "complete",
+              "snapshot_count": 56,
+              "present_page_count": 56,
+              "present_page_range": [
+                1,
+                56
+              ],
+              "reported_total_count": 5550,
+              "expected_page_count": 56,
+              "next_page": null,
+              "errors": []
+            },
+            {
+              "job_id": "2025fy_advanced_supplement",
+              "period_end": "2025-12-31",
+              "purpose": "annual_current_advanced_inputs",
+              "status": "partial",
+              "snapshot_count": 29,
+              "present_page_count": 29,
+              "present_page_range": [
+                1,
+                29
+              ],
+              "reported_total_count": 5550,
+              "expected_page_count": 56,
+              "next_page": 30,
+              "errors": []
+            },
+            {
+              "job_id": "2025q1_advanced_inputs",
+              "period_end": "2025-03-31",
+              "purpose": "quarterly_comparable_and_advanced_inputs",
+              "status": "not_started",
+              "snapshot_count": 0,
+              "present_page_count": 0,
+              "present_page_range": null,
+              "reported_total_count": null,
+              "expected_page_count": null,
+              "next_page": 1,
+              "errors": []
+            },
+            {
+              "job_id": "2026q1_advanced_supplement",
+              "period_end": "2026-03-31",
+              "purpose": "quarterly_current_advanced_inputs",
+              "status": "not_started",
+              "snapshot_count": 0,
+              "present_page_count": 0,
+              "present_page_range": null,
+              "reported_total_count": null,
+              "expected_page_count": null,
+              "next_page": 1,
+              "errors": []
+            }
+          ]
+        }
+      },
+      "gaps": [
+        "advanced calculated period missing: 2025-12-31",
+        "advanced calculated period missing: 2026-03-31"
+      ]
+    },
+    {
+      "requirement": "announcement_and_news_monitoring",
+      "achieved": true,
+      "evidence": {
+        "real_event_count": 2,
+        "real_news_count": 5,
+        "taxonomy_version": "1.2.0",
+        "event_types": [
+          "dividend",
+          "earnings_forecast",
+          "management_change",
+          "periodic_report",
+          "pledge",
+          "regulatory",
+          "restructuring",
+          "share_repurchase",
+          "shareholder_change",
+          "unlock"
+        ],
+        "event_report_manifests": [
+          "reports/daily/monitoring/events/2026/08/08/41318e1fb4611ceeab78/manifest.json"
+        ],
+        "news_report_manifests": [
+          "reports/daily/monitoring/news/2026/08/08/8c8c21ed37849f906394/manifest.json"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "privacy_safe_portfolio_management",
+      "achieved": true,
+      "evidence": {
+        "artifacts": [
+          "config/portfolio_schema.json",
+          "portfolio/holdings.template.csv",
+          "portfolio/transactions.template.csv",
+          "portfolio/investment_card.template.json",
+          "scripts/validate_portfolio.py",
+          "scripts/classify_portfolio_review.py"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "market_and_portfolio_screening",
+      "achieved": true,
+      "evidence": {
+        "largest_screening_universe": 5550
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "structured_research_and_decision_journal",
+      "achieved": true,
+      "evidence": {
+        "artifacts": [
+          "research_queue/research_case.template.json",
+          "decision_journal/decision_entry.template.json",
+          "decision_journal/review_entry.template.json",
+          "scripts/validate_research_workflow.py"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "continuous_validation",
+      "achieved": true,
+      "evidence": {
+        "workflow": ".github/workflows/validate.yml"
+      },
+      "gaps": []
+    },
+    {
+      "requirement": "investor_final_authority_no_auto_trading",
+      "achieved": true,
+      "evidence": {
+        "final_authority": "investor"
+      },
+      "gaps": []
+    }
+  ]
+}
