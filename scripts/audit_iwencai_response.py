@@ -86,7 +86,10 @@ def extract_table_components(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
                 if isinstance(data, dict) and isinstance(data.get("columns"), list):
                     components.append(component)
 
-    answers = payload.get("data", {}).get("answer", [])
+    response_data = payload.get("data")
+    if not isinstance(response_data, dict):
+        return components
+    answers = response_data.get("answer", [])
     if not isinstance(answers, list):
         return components
 

@@ -35,3 +35,6 @@ config/credentials.*
 private/
 **/private/
 *.private.*
+
+# Temporary Codex collection inbox. Validated results are moved into data/raw/.
+.codex-collection-inbox/

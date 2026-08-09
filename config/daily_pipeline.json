@@ -1,5 +1,5 @@
 {
-  "pipeline_version": "1.1.0",
+  "pipeline_version": "1.2.0",
   "purpose": "deterministic_daily_orchestration",
   "llm_calls_allowed": false,
   "external_collection_enabled": false,
@@ -29,6 +29,29 @@
       "2026q1_advanced_supplement"
     ],
     "timeout_seconds": 900
+  },
+  "research_readiness": {
+    "schema_version": 1,
+    "raw_root": "data/raw",
+    "normalized_root": "data/normalized",
+    "derived_root": "data/derived",
+    "reports_root": "reports/daily",
+    "event_taxonomy": "config/event_taxonomy.json",
+    "screening_rules": "config/screening_rules.json",
+    "minimum_screening_universe": 5000,
+    "timeout_seconds": 900,
+    "monitoring_routes": [
+      {
+        "route_id": "recent_share_repurchase_announcements",
+        "stream": "announcements",
+        "query": "A股 最近七日 股份回购公告"
+      },
+      {
+        "route_id": "recent_important_company_news",
+        "stream": "news",
+        "query": "A股 最近七日 重要公司新闻"
+      }
+    ]
   },
   "stages": [
     {

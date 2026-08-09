@@ -1,0 +1,55 @@
+{
+  "plan_version": "1.0.0",
+  "display_name": "Codex 每日数据采集计划",
+  "timezone": "Asia/Shanghai",
+  "suggested_run_time": "19:00",
+  "collector": "codex_agent",
+  "python_importer": "scripts/import_codex_collection.py",
+  "python_pipeline": "scripts/run_daily_pipeline.py",
+  "principles": {
+    "save_raw_before_processing": true,
+    "raw_response_must_be_unmodified": true,
+    "guess_unknown_fields": false,
+    "investment_judgment_allowed": false,
+    "automatic_trading_allowed": false,
+    "commit_only_after_validation": true
+  },
+  "tasks": [
+    {
+      "task_id": "daily_a_share_market",
+      "display_name": "A股每日市场快照",
+      "dataset_kind": "market",
+      "tool": "hithink-market-query",
+      "frequency": "trading_day",
+      "query_template": "{trade_date}全部A股的股票代码、股票简称、股票市场类型、上市日期、上市状态、开盘价（不复权）、最高价（不复权）、最低价（不复权）、收盘价（不复权）、成交量、成交额、总市值、市盈率(pe,ttm)，按股票代码升序排列",
+      "complete_pagination_required": true
+    },
+    {
+      "task_id": "recent_announcements",
+      "display_name": "最近七日重要公告",
+      "dataset_kind": "announcements",
+      "tool": "announcement-search",
+      "frequency": "daily",
+      "query_template": "A股 最近七日 股份回购公告",
+      "complete_pagination_required": false
+    },
+    {
+      "task_id": "recent_company_news",
+      "display_name": "最近七日重要公司新闻",
+      "dataset_kind": "news",
+      "tool": "news-search",
+      "frequency": "daily",
+      "query_template": "A股 最近七日 重要公司新闻",
+      "complete_pagination_required": false
+    },
+    {
+      "task_id": "financial_plan_follow_up",
+      "display_name": "财务批次缺口检查与续采",
+      "dataset_kind": "financial",
+      "tool": "hithink-finance-query",
+      "frequency": "daily_if_incomplete",
+      "query_source": "config/financial_collection_plan.json",
+      "complete_pagination_required": true
+    }
+  ]
+}

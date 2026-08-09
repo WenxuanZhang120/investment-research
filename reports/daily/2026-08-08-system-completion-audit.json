@@ -161,7 +161,12 @@
           "shareholder_change",
           "unlock"
         ],
-        "news_collector": true
+        "event_report_manifests": [
+          "reports/daily/monitoring/events/2026/08/08/41318e1fb4611ceeab78/manifest.json"
+        ],
+        "news_report_manifests": [
+          "reports/daily/monitoring/news/2026/08/08/8c8c21ed37849f906394/manifest.json"
+        ]
       },
       "gaps": []
     },

@@ -11,7 +11,7 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional, Sequence, Union
+from typing import Any, List, Optional, Sequence, Union
 
 
 SCHEMA_VERSION = 1
@@ -72,6 +72,10 @@ def save_raw_response(
     query: str,
     raw_root: Union[str, Path] = DEFAULT_RAW_ROOT,
     fetched_at: Optional[datetime] = None,
+    as_of_date: Optional[str] = None,
+    raw_field_names: Optional[Sequence[str]] = None,
+    collection_method: Optional[str] = None,
+    collector_name: Optional[str] = None,
 ) -> Path:
     """Save a raw response envelope and return its path.
 
@@ -87,6 +91,24 @@ def save_raw_response(
         raise ValueError("source name is reserved")
     if not isinstance(query, str) or not query.strip():
         raise ValueError("query must be a non-empty string")
+
+    normalized_fields: Optional[List[str]] = None
+    if raw_field_names is not None:
+        if (
+            isinstance(raw_field_names, (str, bytes))
+            or any(not isinstance(name, str) or not name for name in raw_field_names)
+        ):
+            raise ValueError("raw_field_names must contain non-empty strings")
+        normalized_fields = sorted(set(raw_field_names))
+        if len(normalized_fields) != len(raw_field_names):
+            raise ValueError("raw_field_names must not contain duplicates")
+    for label, value in (
+        ("as_of_date", as_of_date),
+        ("collection_method", collection_method),
+        ("collector_name", collector_name),
+    ):
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            raise ValueError(f"{label} must be a non-empty string when supplied")
 
     timestamp = fetched_at or datetime.now(PROJECT_TIMEZONE)
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
@@ -109,6 +131,14 @@ def save_raw_response(
         "schema_version": SCHEMA_VERSION,
         "payload_sha256": payload_sha256,
     }
+    if as_of_date is not None:
+        metadata["as_of_date"] = as_of_date
+    if normalized_fields is not None:
+        metadata["raw_field_names"] = normalized_fields
+    if collection_method is not None:
+        metadata["collection_method"] = collection_method
+    if collector_name is not None:
+        metadata["collector_name"] = collector_name
     envelope = {"metadata": metadata, "payload": payload}
 
     root = Path(raw_root)

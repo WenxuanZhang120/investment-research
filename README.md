@@ -6,8 +6,8 @@
 
 系统最终形成以下协作方式：
 
-- **Codex**：负责建设、测试、修复和升级数据工程与自动化系统。
-- **Python + GitHub Actions**：负责日常数据采集、整理、标准化、验证和报告生成。
+- **Codex**：负责建设、测试、修复系统，并在当前阶段调度每日数据、公告和新闻采集。
+- **Python + GitHub Actions**：负责确定性的 Raw 导入、标准化、验证和报告生成。
 - **GitHub**：作为研究资料、数据文件、程序和变更历史的中央仓库。
 - **iWencai（同花顺问财）**：作为主要的 A 股数据来源。
 - **ChatGPT**：负责结构化投资分析、风险审查和投资委员会辅助。
@@ -16,9 +16,13 @@
 完整工作流预计为：
 
 ```text
-数据来源
+Codex 每日采集调度
   ↓
-Python 自动数据管道
+数据来源工具
+  ↓
+Raw 原始响应
+  ↓
+Python 确定性数据管道
   ↓
 GitHub 投资研究仓库
   ↓
@@ -29,13 +33,17 @@ ChatGPT 投资分析流程
 投资决策日志与组合复盘
 ```
 
-Codex 负责 Build / Fix / Improve，Python 与 GitHub Actions 负责 Run，ChatGPT 负责 Analyze，投资者负责 Decide。完整且具有约束力的职责边界见 [`ARCHITECTURE.md`](ARCHITECTURE.md)。
+Codex 负责 Build / Fix / Improve，并在当前阶段承担每日采集编排；Python 负责可重复的标准化与处理，ChatGPT 负责 Analyze，投资者负责 Decide。完整且具有约束力的职责边界见 [`ARCHITECTURE.md`](ARCHITECTURE.md)。
 
-当前无 LLM 日常编排入口为 `python3 scripts/run_daily_pipeline.py`。其版本化配置位于 `config/daily_pipeline.json`；外部采集默认关闭。运行前会自动检查本地 Raw 批次是否完整以及对应版本的标准化、衍生结果是否已经存在，只有就绪且未处理的任务才会加入执行计划。`--dry-run` 可在不执行任何步骤的情况下查看门控结论和完整计划。
+每日采集计划位于 `config/codex_daily_collection.json`，面向非技术使用者的流程说明见 [`每日自动采集说明.md`](每日自动采集说明.md)。Codex 必须保存工具的未修改响应；Python 导入器 `scripts/import_codex_collection.py` 会复核原始字段、拒绝凭据字段、先写入不可覆盖的 Raw，再调用现有标准化器。外部工具调用仍与离线 Python 流水线分离，因此标准化结果可以复现，也不会让模型在数据行中自行补值。
 
-`.github/workflows/daily-offline-pipeline.yml` 在工作日北京时间 18:00 自动运行同一离线入口，也支持在 GitHub Actions 页面手动触发。工作流只有仓库读取权限，不包含问财凭据、采集命令、提交或推送权限；每次便携运行记录作为 Actions artifact 保留 30 天。
+Python 离线处理入口为 `python3 scripts/run_daily_pipeline.py`。其版本化配置位于 `config/daily_pipeline.json`；Python 自身的外部采集仍然关闭。运行前会自动检查本地 Raw 批次是否完整以及对应版本的标准化、衍生结果是否已经存在，只有就绪且未处理的任务才会加入执行计划。`--dry-run` 可在不执行任何步骤的情况下查看门控结论和完整计划。
 
-外部财务采集与日常离线流水线保持分离。`.github/workflows/manual-financial-collection.yml` 只能手动触发，默认动作是无网络 `preflight`。采集动作必须选择版本化任务、通过 `iwencai-collection` 环境、提供 GitHub Secret `IWENCAI_API_KEY`，并输入精确确认文本。新 Raw 快照、对应查询日志和不含凭据的审计文件只作为 Actions artifact 输出，不会自动提交或推送。
+同一入口也会按版本化查询路由发现本地公告与新闻 Raw，自动判断是否需要重新标准化，并生成不可变的 `reports/daily/monitoring/` 报告包。每个报告包包含事实索引、来源清单、来源清单哈希、报告哈希、时点覆盖和“无投资判断／无自动交易”标记。全市场筛选仅在完整市场与财务指标输入就绪、且对应规则版本尚未处理时运行。
+
+`.github/workflows/daily-offline-pipeline.yml` 继续作为独立的只读复核任务，在工作日北京时间 18:00 运行离线入口。它不持有数据源凭据、不负责采集和推送；Codex 每日任务负责在本地完成采集、导入和验证，只有全部通过后才能发布仓库变更。
+
+仓库仍保留旧的 `.github/workflows/manual-financial-collection.yml` 和 `IWENCAI_API_KEY` 采集代码，供历史审计与未来兼容检查；该入口目前没有可由用户配置的有效凭据，不属于新的每日运行路径，也不应被 Codex 定时任务调用。新的日常入口只接受 Codex 工具返回的无凭据采集产物。
 
 真实采集成功后，工作流会先对产物执行只读导入预检。下载产物后，应先在本地重复预检，再由专用导入器把已经验证的 Raw 快照和查询日志以不可覆盖、可重复执行的方式写回仓库。导入报告只保存仓库相对路径和 Actions 运行身份，不保存下载目录、凭据或本机路径：
 
@@ -57,6 +65,7 @@ python3 scripts/run_guarded_financial_collection.py \
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md)：系统职责、数据链路、LLM 边界和变更原则。
 - [`PRIVACY.md`](PRIVACY.md)：公开仓库、个人数据、凭据和路径隐私规则。
+- [`每日自动采集说明.md`](每日自动采集说明.md)：每日采集、Raw 导入、失败处理和人工边界。
 
 ## 仓库结构
 
@@ -165,9 +174,9 @@ confidence
 
 ## 尚未实现
 
-当前仓库不包含：
+当前仓库仍不包含：
 
-- 自动定时采集任务、仓库内 API 凭据；
+- 仓库内 API 凭据或自动交易能力；
 - 连续历史市场数据库或全市场连续财务数据库；
 - 全市场真实高级财务指标、行业中性筛选或估值模型；
 - 投资建议、自动下单或自动交易功能；
