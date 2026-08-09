@@ -37,6 +37,14 @@ Codex 负责 Build / Fix / Improve，Python 与 GitHub Actions 负责 Run，Chat
 
 外部财务采集与日常离线流水线保持分离。`.github/workflows/manual-financial-collection.yml` 只能手动触发，默认动作是无网络 `preflight`。采集动作必须选择版本化任务、通过 `iwencai-collection` 环境、提供 GitHub Secret `IWENCAI_API_KEY`，并输入精确确认文本。新 Raw 快照、对应查询日志和不含凭据的审计文件只作为 Actions artifact 输出，不会自动提交或推送。
 
+真实采集成功后，工作流会先对产物执行只读导入预检。下载产物后，应先在本地重复预检，再由专用导入器把已经验证的 Raw 快照和查询日志以不可覆盖、可重复执行的方式写回仓库。导入报告只保存仓库相对路径和 Actions 运行身份，不保存下载目录、凭据或本机路径：
+
+```bash
+python3 scripts/import_financial_collection_artifact.py <下载后的产物目录> --dry-run
+python3 scripts/import_financial_collection_artifact.py <下载后的产物目录>
+python3 scripts/validate_repository.py
+```
+
 本地无网络预检示例：
 
 ```bash

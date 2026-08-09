@@ -173,7 +173,12 @@ class GuardedFinancialCollectionTests(unittest.TestCase):
             }
 
         with patch.dict(
-            os.environ, {"IWENCAI_API_KEY": "test-secret-never-saved"}
+            os.environ,
+            {
+                "IWENCAI_API_KEY": "test-secret-never-saved",
+                "GITHUB_REPOSITORY": "owner/repository",
+                "GITHUB_RUN_ID": "123",
+            },
         ):
             result = self.execute(
                 action="collect",
@@ -186,6 +191,10 @@ class GuardedFinancialCollectionTests(unittest.TestCase):
         self.assertTrue(audit["raw_first_preserved"])
         self.assertNotIn("snapshot_paths", audit["collection_result"])
         self.assertNotIn("query", audit["collection_result"])
+        self.assertEqual(
+            audit["workflow_context"],
+            {"GITHUB_REPOSITORY": "owner/repository", "GITHUB_RUN_ID": "123"},
+        )
         files = [path for path in result["artifact_path"].rglob("*") if path.is_file()]
         self.assertTrue(any(path.name == "audit.json" for path in files))
         self.assertTrue(any(path.suffix == ".jsonl" for path in files))

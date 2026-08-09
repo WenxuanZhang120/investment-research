@@ -336,6 +336,17 @@ def run_guarded_collection(
         "collection_result": public_result,
         "job_status_after": _public_status(status_after),
         "runtime_error_type": type(runtime_error).__name__ if runtime_error else None,
+        "workflow_context": {
+            name: os.environ[name]
+            for name in (
+                "GITHUB_REPOSITORY",
+                "GITHUB_RUN_ID",
+                "GITHUB_RUN_ATTEMPT",
+                "GITHUB_SHA",
+                "GITHUB_REF",
+            )
+            if os.environ.get(name)
+        },
     }
     destination = None
     if artifact_root is not None:
