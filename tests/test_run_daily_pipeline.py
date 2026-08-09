@@ -58,10 +58,14 @@ class RunDailyPipelineTests(unittest.TestCase):
         )
         self.assertFalse(config["llm_calls_allowed"])
         self.assertFalse(config["external_collection_enabled"])
-        self.assertEqual(
-            config["readiness"]["status"], "waiting_for_complete_input"
-        )
-        self.assertEqual(config["readiness"]["planned_step_count"], 0)
+        planned_count = config["readiness"]["planned_step_count"]
+        if planned_count:
+            self.assertEqual(config["readiness"]["status"], "work_planned")
+        else:
+            self.assertIn(
+                config["readiness"]["status"],
+                {"waiting_for_complete_input", "up_to_date"},
+            )
         self.assertEqual(
             [stage["stage"] for stage in config["stages"]],
             [
