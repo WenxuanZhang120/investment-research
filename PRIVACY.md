@@ -45,3 +45,5 @@ git diff --cached
 ```
 
 如发现凭据已经被提交，应先撤销或轮换凭据，并在仓库公开前清理 Git 历史。
+
+GitHub Actions 中的数据源密钥只能保存为名为 `IWENCAI_API_KEY` 的 GitHub Secret，不能写入工作流、配置、日志、Raw 响应或 Actions artifact。手动采集审计只记录凭据是否存在，不记录凭据值；上传产物必须再次确认不含授权请求头和本机绝对路径。

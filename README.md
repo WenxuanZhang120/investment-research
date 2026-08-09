@@ -35,6 +35,16 @@ Codex 负责 Build / Fix / Improve，Python 与 GitHub Actions 负责 Run，Chat
 
 `.github/workflows/daily-offline-pipeline.yml` 在工作日北京时间 18:00 自动运行同一离线入口，也支持在 GitHub Actions 页面手动触发。工作流只有仓库读取权限，不包含问财凭据、采集命令、提交或推送权限；每次便携运行记录作为 Actions artifact 保留 30 天。
 
+外部财务采集与日常离线流水线保持分离。`.github/workflows/manual-financial-collection.yml` 只能手动触发，默认动作是无网络 `preflight`。采集动作必须选择版本化任务、通过 `iwencai-collection` 环境、提供 GitHub Secret `IWENCAI_API_KEY`，并输入精确确认文本。新 Raw 快照、对应查询日志和不含凭据的审计文件只作为 Actions artifact 输出，不会自动提交或推送。
+
+本地无网络预检示例：
+
+```bash
+python3 scripts/run_guarded_financial_collection.py \
+  --action preflight \
+  --job 2026q1_base_resume
+```
+
 ## 核心文档
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md)：系统职责、数据链路、LLM 边界和变更原则。

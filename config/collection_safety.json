@@ -1,0 +1,15 @@
+{
+  "policy_version": "1.0.0",
+  "source": "iwencai",
+  "credential_environment_variable": "IWENCAI_API_KEY",
+  "confirmation_prefix": "COLLECT:",
+  "max_pages_per_run": 60,
+  "request_timeout_seconds": 60,
+  "allowed_job_ids": [
+    "2026q1_base_resume",
+    "2024fy_advanced_inputs",
+    "2025fy_advanced_supplement",
+    "2025q1_advanced_inputs",
+    "2026q1_advanced_supplement"
+  ]
+}

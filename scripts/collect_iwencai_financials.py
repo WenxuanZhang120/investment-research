@@ -169,6 +169,7 @@ def collect_query(
     start_page: int = 1,
     limit: int = DEFAULT_LIMIT,
     max_pages: int = DEFAULT_MAX_PAGES,
+    page_budget: Optional[int] = None,
     timeout: int = DEFAULT_TIMEOUT,
     raw_root: Path = DEFAULT_RAW_ROOT,
     request_page: Callable[..., Dict[str, Any]] = _request_page,
@@ -180,6 +181,8 @@ def collect_query(
         raise CollectionError(
             "start_page, limit, max_pages, and timeout must be positive"
         )
+    if page_budget is not None and page_budget < 1:
+        raise CollectionError("page_budget must be positive when supplied")
     if start_page > max_pages:
         raise CollectionError("start_page cannot exceed max_pages")
 
@@ -190,7 +193,13 @@ def collect_query(
     collected_rows = 0
     expected_page_count: Optional[int] = None
 
-    for page in range(start_page, max_pages + 1):
+    budget_end_page = (
+        min(max_pages, start_page + page_budget - 1)
+        if page_budget is not None
+        else max_pages
+    )
+    reached_query_end = False
+    for page in range(start_page, budget_end_page + 1):
         response = _request_with_retry(
             request_page,
             query=query,
@@ -250,16 +259,27 @@ def collect_query(
             flush=True,
         )
         if not payload["has_more"]:
+            reached_query_end = True
             break
-    else:
+    if not reached_query_end and not (
+        page_budget is not None
+        and budget_end_page == start_page + page_budget - 1
+        and expected_page_count is not None
+        and budget_end_page < expected_page_count
+    ):
         raise CollectionError(
             f"query requires more than the configured max_pages={max_pages}"
         )
 
     if expected_total is None or expected_page_count is None:
         raise CollectionError("query did not return pagination metadata")
-    expected_segment_pages = expected_page_count - start_page + 1
-    expected_segment_rows = max(0, expected_total - (start_page - 1) * limit)
+    segment_end_page = start_page + len(snapshot_paths) - 1
+    expected_segment_pages = segment_end_page - start_page + 1
+    expected_segment_rows = max(
+        0,
+        min(expected_total, segment_end_page * limit)
+        - (start_page - 1) * limit,
+    )
     if len(snapshot_paths) != expected_segment_pages:
         raise CollectionError(
             f"expected {expected_segment_pages} pages in segment, "
@@ -277,8 +297,11 @@ def collect_query(
         "collector_version": COLLECTOR_VERSION,
         "limit": limit,
         "start_page": start_page,
-        "end_page": expected_page_count,
-        "complete_query": start_page == 1,
+        "end_page": segment_end_page,
+        "complete_query": start_page == 1 and reached_query_end,
+        "reached_query_end": reached_query_end,
+        "remaining_page_count": max(0, expected_page_count - segment_end_page),
+        "next_page": None if reached_query_end else segment_end_page + 1,
         "query_record_count": expected_total,
         "page_count": len(snapshot_paths),
         "record_count": collected_rows,
@@ -299,6 +322,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     parser.add_argument("--max-pages", type=int, default=DEFAULT_MAX_PAGES)
+    parser.add_argument(
+        "--page-budget",
+        type=int,
+        help="Maximum number of pages to save in this invocation",
+    )
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     parser.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     return parser
@@ -312,6 +340,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             start_page=args.start_page,
             limit=args.limit,
             max_pages=args.max_pages,
+            page_budget=args.page_budget,
             timeout=args.timeout,
             raw_root=args.raw_root,
         )

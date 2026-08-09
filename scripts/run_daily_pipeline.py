@@ -83,6 +83,9 @@ def _validate_command(
     collection_requested = script.name.startswith("collect_") or (
         script.name == "run_financial_collection_plan.py"
         and "collect" in command[1:]
+    ) or (
+        script.name == "run_guarded_financial_collection.py"
+        and "collect" in command[1:]
     )
     if not external_collection_enabled and collection_requested:
         raise PipelineError(

@@ -105,6 +105,20 @@ class RunDailyPipelineTests(unittest.TestCase):
                 repository_root=self.root,
             )
 
+        guarded = self.root / "scripts/run_guarded_financial_collection.py"
+        guarded.write_text("print('collect')\n", encoding="utf-8")
+        with self.assertRaisesRegex(PipelineError, "external collection is disabled"):
+            validate_pipeline_config(
+                self.config(
+                    [
+                        "scripts/run_guarded_financial_collection.py",
+                        "--action",
+                        "collect",
+                    ]
+                ),
+                repository_root=self.root,
+            )
+
     def test_rejects_absolute_command_arguments(self):
         with self.assertRaisesRegex(PipelineError, "absolute paths"):
             validate_pipeline_config(
