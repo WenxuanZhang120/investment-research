@@ -1,5 +1,5 @@
 {
-  "mapping_version": "3.2.0",
+  "mapping_version": "3.3.0",
   "fields": [
     {
       "canonical_field_name": "security_code",
@@ -19,7 +19,7 @@
     {
       "canonical_field_name": "listing_date",
       "category": "identity",
-      "raw_base_fields": ["新股上市日期"]
+      "raw_base_fields": ["新股上市日期", "上市日期"]
     },
     {
       "canonical_field_name": "listing_status",
@@ -31,21 +31,21 @@
       "category": "market",
       "unit": "CNY",
       "adjustment_type": "unadjusted",
-      "raw_base_fields": ["开盘价:不复权"]
+      "raw_base_fields": ["开盘价:不复权", "开盘价_不复权"]
     },
     {
       "canonical_field_name": "high",
       "category": "market",
       "unit": "CNY",
       "adjustment_type": "unadjusted",
-      "raw_base_fields": ["最高价:不复权"]
+      "raw_base_fields": ["最高价:不复权", "最高价_不复权"]
     },
     {
       "canonical_field_name": "low",
       "category": "market",
       "unit": "CNY",
       "adjustment_type": "unadjusted",
-      "raw_base_fields": ["最低价:不复权"]
+      "raw_base_fields": ["最低价:不复权", "最低价_不复权"]
     },
     {
       "canonical_field_name": "close",
@@ -57,7 +57,7 @@
       "category": "market",
       "unit": "CNY",
       "adjustment_type": "unadjusted",
-      "raw_base_fields": ["收盘价:不复权"]
+      "raw_base_fields": ["收盘价:不复权", "收盘价_不复权"]
     },
     {
       "canonical_field_name": "volume",

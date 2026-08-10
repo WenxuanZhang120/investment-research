@@ -127,6 +127,37 @@ class NormalizeIwencaiEtfTests(unittest.TestCase):
         with self.assertRaisesRegex(EtfNormalizationError, "outside configured scope"):
             build_etf_tables(self.snapshot, repository_root=self.root)
 
+    def test_accepts_observed_prefixed_fund_fields(self):
+        replacements = {
+            "ETF代码": "基金代码",
+            "ETF简称": "基金简称",
+            "跟踪指数": "基金@跟踪指数",
+            "基金类型": "基金@基金市场类型",
+            "上市日期": "基金@上市日期",
+            "最新价": "基金@收盘价[20260809]",
+            "成交额": "基金@成交额[20260809]",
+            "基金规模": "基金@基金规模[20260808]",
+            "单位净值": "基金@单位净值[20260808]",
+            "溢价率": "基金@折溢价[20260809]",
+            "管理费率": "基金@管理费率",
+            "托管费率": "基金@托管费率",
+            "跟踪误差": "基金@跟踪误差[20260508-20260807]",
+        }
+        for row in self.payload["datas"]:
+            for old_name, new_name in replacements.items():
+                row[new_name] = row.pop(old_name)
+        self.write_snapshot(self.payload)
+
+        built = build_etf_batch([self.snapshot], repository_root=self.root)
+
+        self.assertEqual(built["coverage"]["etf_count"], 2)
+        first = built["records"][0]
+        self.assertEqual(
+            first["field_lineage"]["tracked_index"]["raw_field_name"],
+            "基金@跟踪指数",
+        )
+        self.assertEqual(first["mapping_version"], "1.1.0")
+
     def test_rejects_tampered_raw_snapshot(self):
         envelope = json.loads(self.snapshot.read_text(encoding="utf-8"))
         envelope["payload"]["datas"][0]["最新价"] = 99

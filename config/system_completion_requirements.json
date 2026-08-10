@@ -23,7 +23,7 @@
     "target_etfs": 1,
     "real_events": 1
   },
-  "required_mapping_version": "3.2.0",
+  "required_mapping_version": "3.3.0",
   "required_financial_periods": ["2025-12-31", "2026-03-31"],
   "required_advanced_metric_periods": ["2025-12-31", "2026-03-31"],
   "required_event_types": [

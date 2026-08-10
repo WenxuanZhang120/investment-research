@@ -1,5 +1,5 @@
 {
-  "mapping_version": "1.0.0",
+  "mapping_version": "1.1.0",
   "fields": [
     {
       "canonical_field_name": "etf_code",
@@ -14,17 +14,17 @@
     {
       "canonical_field_name": "tracked_index",
       "category": "etf_identity",
-      "raw_base_fields": ["跟踪指数", "跟踪标的"]
+      "raw_base_fields": ["跟踪指数", "跟踪标的", "基金@跟踪指数"]
     },
     {
       "canonical_field_name": "fund_type",
       "category": "etf_identity",
-      "raw_base_fields": ["基金类型"]
+      "raw_base_fields": ["基金类型", "基金@基金市场类型"]
     },
     {
       "canonical_field_name": "etf_listing_date",
       "category": "etf_identity",
-      "raw_base_fields": ["上市日期", "基金上市日期"]
+      "raw_base_fields": ["上市日期", "基金上市日期", "基金@上市日期"]
     },
     {
       "canonical_field_name": "listing_status",
@@ -35,7 +35,7 @@
       "canonical_field_name": "etf_price",
       "category": "etf_market",
       "unit": "CNY",
-      "raw_base_fields": ["最新价", "ETF最新价"]
+      "raw_base_fields": ["最新价", "ETF最新价", "基金@收盘价"]
     },
     {
       "canonical_field_name": "change_pct",
@@ -53,43 +53,43 @@
       "canonical_field_name": "turnover",
       "category": "etf_market",
       "unit": "CNY",
-      "raw_base_fields": ["成交额"]
+      "raw_base_fields": ["成交额", "基金@成交额"]
     },
     {
       "canonical_field_name": "fund_size",
       "category": "etf_metric",
       "unit": "CNY",
-      "raw_base_fields": ["基金规模", "最新基金规模", "资产规模"]
+      "raw_base_fields": ["基金规模", "最新基金规模", "资产规模", "基金@基金规模"]
     },
     {
       "canonical_field_name": "nav",
       "category": "etf_metric",
       "unit": "CNY",
-      "raw_base_fields": ["单位净值", "最新单位净值", "基金单位净值"]
+      "raw_base_fields": ["单位净值", "最新单位净值", "基金单位净值", "基金@单位净值"]
     },
     {
       "canonical_field_name": "premium_discount_rate",
       "category": "etf_metric",
       "unit": "percent",
-      "raw_base_fields": ["溢价率", "折溢价率", "基金溢价率"]
+      "raw_base_fields": ["溢价率", "折溢价率", "基金溢价率", "基金@折溢价"]
     },
     {
       "canonical_field_name": "management_fee_rate",
       "category": "etf_metric",
       "unit": "percent",
-      "raw_base_fields": ["管理费率", "基金管理费率"]
+      "raw_base_fields": ["管理费率", "基金管理费率", "基金@管理费率"]
     },
     {
       "canonical_field_name": "custody_fee_rate",
       "category": "etf_metric",
       "unit": "percent",
-      "raw_base_fields": ["托管费率", "基金托管费率"]
+      "raw_base_fields": ["托管费率", "基金托管费率", "基金@托管费率"]
     },
     {
       "canonical_field_name": "tracking_error",
       "category": "etf_metric",
       "unit": "percent",
-      "raw_base_fields": ["跟踪误差", "年化跟踪误差"]
+      "raw_base_fields": ["跟踪误差", "年化跟踪误差", "基金@跟踪误差"]
     }
   ]
 }

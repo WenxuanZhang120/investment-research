@@ -54,11 +54,27 @@ class ParseIwencaiFieldsTests(unittest.TestCase):
         self.assertEqual(result["adjustment_type"], "unadjusted")
         self.assertEqual(result["as_of_date"], "2026-08-07")
 
+    def test_maps_current_underscore_unadjusted_price_fields(self) -> None:
+        expected = {
+            "开盘价_不复权[20260810]": "open",
+            "最高价_不复权[20260810]": "high",
+            "最低价_不复权[20260810]": "low",
+            "收盘价_不复权[20260810]": "close",
+        }
+
+        for raw_field, canonical_name in expected.items():
+            with self.subTest(raw_field=raw_field):
+                parsed = self.parse(raw_field)
+                self.assertEqual(parsed["canonical_field_name"], canonical_name)
+                self.assertEqual(parsed["adjustment_type"], "unadjusted")
+                self.assertEqual(parsed["as_of_date"], "2026-08-10")
+
     def test_maps_observed_security_identity_fields(self) -> None:
         code = self.parse("股票代码")
         name = self.parse("股票简称")
         memberships = self.parse("股票市场类型")
         listing_date = self.parse("新股上市日期")
+        current_listing_date = self.parse("上市日期")
         listing_status = self.parse("上市状态")
 
         self.assertEqual(code["canonical_field_name"], "security_code")
@@ -68,6 +84,9 @@ class ParseIwencaiFieldsTests(unittest.TestCase):
             "market_memberships",
         )
         self.assertEqual(listing_date["canonical_field_name"], "listing_date")
+        self.assertEqual(
+            current_listing_date["canonical_field_name"], "listing_date"
+        )
         self.assertEqual(listing_status["canonical_field_name"], "listing_status")
         self.assertEqual(code["mapping_status"], "mapped")
         self.assertEqual(name["mapping_status"], "mapped")

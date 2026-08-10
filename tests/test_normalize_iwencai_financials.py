@@ -182,7 +182,7 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
         )
         self.assertEqual(manifest["normalizer_version"], "1.3.0")
         self.assertEqual(manifest["bundle_schema_version"], 2)
-        self.assertEqual(manifest["mapping_version"], "3.2.0")
+        self.assertEqual(manifest["mapping_version"], "3.3.0")
         self.assertEqual(
             manifest["tables"]["financial_reports"]["record_count"],
             6,

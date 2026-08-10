@@ -183,6 +183,31 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
         )
         self.assertEqual(built["unmapped_fields"], ["自动附加字段[20260807]"])
 
+    def test_accepts_current_underscore_unadjusted_close_field(self) -> None:
+        old_name = "收盘价:不复权[20260807]"
+        new_name = "收盘价_不复权[20260807]"
+        table = self.payload["data"]["answer"][0]["txt"][0]["content"][
+            "components"
+        ][0]["data"]
+        for column in table["columns"]:
+            if column.get("key") == old_name:
+                column["key"] = new_name
+                column["index_name"] = "收盘价_不复权"
+        for row in table["datas"]:
+            row[new_name] = row.pop(old_name)
+        self.write_snapshot(self.payload)
+
+        built = build_normalized_tables(
+            self.snapshot, repository_root=self.root
+        )
+
+        market_bar = built["tables"]["market_bars_daily"][0]
+        self.assertEqual(market_bar["adjustment_type"], "unadjusted")
+        self.assertEqual(
+            market_bar["field_lineage"]["close"]["raw_field_name"],
+            new_name,
+        )
+
     def test_writes_atomic_bundle_and_refuses_overwrite(self) -> None:
         normalized_root = self.root / "normalized"
         destination = normalize_snapshot(
@@ -193,7 +218,7 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
 
         self.assertEqual(destination.name, "test-record-id")
         manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["normalizer_version"], "2.0.0")
+        self.assertEqual(manifest["normalizer_version"], "2.1.0")
         self.assertEqual(manifest["bundle_schema_version"], 2)
         self.assertEqual(manifest["tables"]["security_master"]["record_count"], 2)
         self.assertTrue((destination / "security_master.jsonl").is_file())
@@ -233,6 +258,26 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
             "2026-08-08",
         )
 
+    def test_accepts_observed_market_membership_string_lists(self) -> None:
+        table = self.payload["data"]["answer"][0]["txt"][0]["content"][
+            "components"
+        ][0]["data"]
+        table["datas"][0]["股票市场类型"] = [
+            "全部A股",
+            "沪深主板A股",
+            "沪深主板A股",
+        ]
+        self.write_snapshot(self.payload)
+
+        built = build_normalized_tables(
+            self.snapshot, repository_root=self.root
+        )
+
+        self.assertEqual(
+            built["tables"]["security_master"][0]["market_memberships"],
+            ["全部A股", "沪深主板A股"],
+        )
+
     def test_rejects_missing_required_value(self) -> None:
         del self.payload["data"]["answer"][0]["txt"][0]["content"]["components"][0][
             "data"
@@ -243,6 +288,25 @@ class NormalizeIwencaiMarketTests(unittest.TestCase):
             build_normalized_tables(
                 self.snapshot, repository_root=self.root
             )
+
+    def test_preserves_market_cap_when_pe_ttm_is_unavailable(self) -> None:
+        table = self.payload["data"]["answer"][0]["txt"][0]["content"][
+            "components"
+        ][0]["data"]
+        del table["datas"][0]["市盈率(pe,ttm)[20260807]"]
+        self.write_snapshot(self.payload)
+
+        built = build_normalized_tables(
+            self.snapshot, repository_root=self.root
+        )
+
+        valuation = built["tables"]["valuation_snapshots"][0]
+        self.assertEqual(valuation["market_cap"], 250000000000)
+        self.assertIsNone(valuation["pe_ttm"])
+        self.assertEqual(
+            valuation["field_lineage"]["pe_ttm"]["value_status"],
+            "missing_in_source",
+        )
 
     def test_real_snapshot_produces_fifty_records_per_table(self) -> None:
         built = build_normalized_tables(REAL_SNAPSHOT)

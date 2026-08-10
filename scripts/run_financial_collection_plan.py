@@ -99,12 +99,16 @@ def inspect_job(job: Dict[str, Any], *, raw_root: Path = DEFAULT_RAW_ROOT) -> Di
         errors.append("inconsistent_limit")
     total = totals[0] if len(totals) == 1 else None
     limit = limits[0] if len(limits) == 1 else None
+    if total == 0:
+        errors.append("empty_result")
     expected_pages = math.ceil(total / limit) if total is not None and limit else None
     present_pages = sorted(pages)
     contiguous_tail = present_pages == list(range(1, len(present_pages) + 1))
     if present_pages and not contiguous_tail:
         errors.append("non_contiguous_pages")
     next_page = len(present_pages) + 1 if contiguous_tail else None
+    if errors:
+        next_page = None
     complete = (
         not errors
         and expected_pages is not None

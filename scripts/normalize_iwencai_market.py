@@ -29,7 +29,7 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
 from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
-NORMALIZER_VERSION = "2.0.0"
+NORMALIZER_VERSION = "2.1.0"
 RECORD_SCHEMA_VERSION = 2
 BUNDLE_SCHEMA_VERSION = 2
 DEFAULT_NORMALIZED_ROOT = REPOSITORY_ROOT / "data" / "normalized"
@@ -319,9 +319,20 @@ def _optional_date(value: Any, field_name: str) -> Optional[str]:
 
 
 def _market_memberships(value: Any) -> List[str]:
-    text = _required_text(value, "market_memberships")
+    if isinstance(value, str):
+        raw_memberships = value.split(";")
+    elif isinstance(value, list):
+        if any(not isinstance(item, str) for item in value):
+            raise NormalizationError(
+                "market_memberships list must contain only strings"
+            )
+        raw_memberships = value
+    else:
+        raise NormalizationError(
+            "market_memberships must be a string or string list"
+        )
     memberships: List[str] = []
-    for item in text.split(";"):
+    for item in raw_memberships:
         normalized = item.strip()
         if normalized and normalized not in memberships:
             memberships.append(normalized)
@@ -635,7 +646,7 @@ def build_normalized_tables(
 
         market_cap_present, market_cap_value = _row_value(row, selected["market_cap"])
         pe_present, pe_value = _row_value(row, selected["pe_ttm"])
-        if market_cap_present != pe_present:
+        if pe_present and not market_cap_present:
             raise NormalizationError(
                 f"{security_code} has incomplete valuation fields"
             )
@@ -653,7 +664,7 @@ def build_normalized_tables(
                     "market_cap_currency": selected["market_cap"]["parsed"][  # type: ignore[index]
                         "unit"
                     ],
-                    "pe_ttm": _required_number(pe_value, "pe_ttm"),
+                    "pe_ttm": _optional_number(pe_value, "pe_ttm"),
                     "field_lineage": _field_lineage(
                         selected,
                         ("security_code", "market_cap", "pe_ttm"),

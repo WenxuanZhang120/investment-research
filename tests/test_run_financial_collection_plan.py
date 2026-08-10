@@ -91,6 +91,14 @@ class RunFinancialCollectionPlanTests(unittest.TestCase):
         status = inspect_job(self.job, raw_root=self.root)
         self.assertIn("duplicate_pages", status["errors"])
 
+    def test_empty_result_cannot_be_resumed_or_marked_complete(self):
+        self.save_page(1, total=0)
+        status = inspect_job(self.job, raw_root=self.root)
+        self.assertEqual(status["status"], "partial")
+        self.assertIn("empty_result", status["errors"])
+        self.assertIsNone(status["next_page"])
+        self.assertEqual(status["reported_total_count"], 0)
+
     def test_real_plan_has_unique_known_jobs(self):
         plan = load_plan(REPOSITORY_ROOT / "config/financial_collection_plan.json")
         self.assertEqual(len(plan["jobs"]), 5)
