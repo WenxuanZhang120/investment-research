@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "as_of_date": "2026-08-10",
+  "timezone": "Asia/Shanghai",
+  "source": "user_reported",
+  "privacy": {
+    "deidentified": true,
+    "excluded_fields": [
+      "broker_account_id",
+      "external_order_id",
+      "personal_identity"
+    ]
+  },
+  "executed_principal_before_fees": 1561.2,
+  "estimated_remaining_cash_before_fees": 6438.8,
+  "pending": [
+    {
+      "security_code": "513100.SH",
+      "security_name": "国泰纳斯达克100ETF",
+      "status": "HALTED_UNTIL_10_30",
+      "halt_until": "2026-08-10T10:30:00+08:00",
+      "planned_quantity": 300,
+      "executed_quantity": 0,
+      "executed_price": null,
+      "notes": "用户报告停牌至10:30，暂未购买；恢复交易后重新检查高开和有效溢价。"
+    }
+  ]
+}
