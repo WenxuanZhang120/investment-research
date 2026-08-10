@@ -1,0 +1,61 @@
+{
+  "import_schema_version": 1,
+  "collection_id": "p0_company_news-2026-08-10-batch01",
+  "dataset_kind": "news",
+  "source": "iwencai",
+  "query": "P0研究队列公司最近七日重要新闻｜标的：000001.SZ 平安银行、000987.SZ 越秀资本、002142.SZ 宁波银行、002736.SZ 国信证券、002966.SZ 苏州银行、600000.SH 浦发银行、600036.SH 招商银行、600919.SH 江苏银行、601009.SH 南京银行、601077.SH 渝农商行、601166.SH 兴业银行、601169.SH 北京银行、601288.SH 农业银行、601328.SH 交通银行、601398.SH 工商银行、601688.SH 华泰证券、601825.SH 沪农商行、601838.SH 成都银行、601881.SH 中国银河、601916.SH 浙商银行、601939.SH 建设银行、601963.SH 重庆银行、601988.SH 中国银行、601998.SH 中信银行",
+  "as_of_date": "2026-08-10",
+  "collection_scope": {
+    "scope_schema_version": 1,
+    "scope_type": "p0_securities",
+    "priority": "P0",
+    "target_source_manifest": "data/derived/runs/screening/2026/08/07/b8e8a88ce7d140110835/manifest.json",
+    "target_as_of_date": "2026-08-07",
+    "target_security_codes": [
+      "000001.SZ",
+      "000987.SZ",
+      "002142.SZ",
+      "002736.SZ",
+      "002966.SZ",
+      "600000.SH",
+      "600036.SH",
+      "600919.SH",
+      "601009.SH",
+      "601077.SH",
+      "601166.SH",
+      "601169.SH",
+      "601288.SH",
+      "601328.SH",
+      "601398.SH",
+      "601688.SH",
+      "601825.SH",
+      "601838.SH",
+      "601881.SH",
+      "601916.SH",
+      "601939.SH",
+      "601963.SH",
+      "601988.SH",
+      "601998.SH"
+    ]
+  },
+  "collector": {
+    "method": "codex_agent",
+    "tool": "news-search",
+    "raw_response_unmodified": true
+  },
+  "fetched_at_start": "2026-08-10T19:12:09.978881+08:00",
+  "fetched_at_end": "2026-08-10T19:12:09.978881+08:00",
+  "response_count": 1,
+  "raw_first_preserved": true,
+  "processing_requested": true,
+  "dry_run": false,
+  "raw_snapshots": [
+    "data/raw/iwencai/2026/08/10/20260810T191209978881+0800_ab50e00ddaef0fce93fe.json"
+  ],
+  "normalized_outputs": [
+    "data/normalized/runs/iwencai/2026/08/10/f32ca72019df3016c52c"
+  ],
+  "investment_judgment_included": false,
+  "automatic_trading_enabled": false,
+  "credential_value_persisted": false
+}

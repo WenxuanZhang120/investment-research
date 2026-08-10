@@ -72,6 +72,10 @@ class CodexCollectionError(ValueError):
     """Raised when an agent collection artifact is unsafe or ambiguous."""
 
 
+class MissingRawFieldsError(CodexCollectionError):
+    """Raised when a raw response exposes no source data fields."""
+
+
 def _canonical(value: Any) -> bytes:
     return json.dumps(
         value,
@@ -160,8 +164,38 @@ def extract_raw_field_names(payload: Dict[str, Any]) -> List[str]:
     if isinstance(indicators, list):
         fields.update(name for name in indicators if isinstance(name, str) and name)
     if not fields:
-        raise CodexCollectionError("raw response contains no detectable source fields")
+        raise MissingRawFieldsError(
+            "raw response contains no detectable source fields"
+        )
     return sorted(fields)
+
+
+def _is_successful_empty_search_response(
+    payload: Dict[str, Any], *, dataset_kind: str
+) -> bool:
+    """Return whether a search endpoint explicitly reported a successful empty set."""
+    total = payload.get("total")
+    return (
+        dataset_kind in {"announcements", "news"}
+        and payload.get("status_code") == 0
+        and isinstance(total, int)
+        and not isinstance(total, bool)
+        and total == 0
+        and payload.get("data") == []
+    )
+
+
+def _extract_dataset_raw_field_names(
+    payload: Dict[str, Any], *, dataset_kind: str
+) -> List[str]:
+    try:
+        return extract_raw_field_names(payload)
+    except MissingRawFieldsError:
+        if _is_successful_empty_search_response(
+            payload, dataset_kind=dataset_kind
+        ):
+            return []
+        raise
 
 
 def _validate_collection_scope(value: Any) -> Optional[Dict[str, Any]]:
@@ -283,7 +317,9 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
             raise CodexCollectionError(
                 f"responses[{index}].raw_response must be an object"
             )
-        detected_fields = extract_raw_field_names(raw_response)
+        detected_fields = _extract_dataset_raw_field_names(
+            raw_response, dataset_kind=dataset_kind
+        )
         declared_fields = response.get("raw_field_names")
         if (
             not isinstance(declared_fields, list)

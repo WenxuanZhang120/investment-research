@@ -1,0 +1,129 @@
+{
+  "metadata": {
+    "source": "iwencai",
+    "query": "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件",
+    "fetched_at": "2026-08-10T19:12:13.638971+08:00",
+    "record_id": "a09017f0012872a6e399",
+    "schema_version": 1,
+    "payload_sha256": "66190bb72eed72995ef005bbce54738c616bdb8f1d9efa500ee262272d3229f0",
+    "as_of_date": "2026-08-10",
+    "raw_field_names": [
+      "channel",
+      "data_source",
+      "extra",
+      "id",
+      "index",
+      "modify_time",
+      "name",
+      "operation_type",
+      "publish_date",
+      "publish_time",
+      "score",
+      "site_authority",
+      "source_original",
+      "status",
+      "summary",
+      "title",
+      "traceability_type",
+      "uid",
+      "url"
+    ],
+    "collection_method": "codex_agent",
+    "collector_name": "news-search",
+    "collection_scope": {
+      "scope_schema_version": 1,
+      "scope_type": "market_wide",
+      "topic_id": "industry_policy_news"
+    }
+  },
+  "payload": {
+    "status_msg": "OK",
+    "status_code": 0,
+    "data": [
+      {
+        "channel": "news",
+        "id": "f0c36591e0801991_0",
+        "uid": "f0c36591e0801991",
+        "url": "https://news.qq.com/rain/a/20260810A05BR000",
+        "title": "政策与产业催化密集落地，A股成长风格领跑周线反弹，南方基金旗下司南投顾关注后续市场风格变化及政策验证",
+        "summary": "政策与产业催化密集落地，A股成长风格领跑周线反弹，南方基金旗下司南投顾关注后续市场风格变化及政策验证上周A股主要宽基指数整体回暖，沪深300周涨约2.3%，中证1000涨幅超过8%；创业板指周涨6.55%，科创100周涨约14%，科技成长资产成为阶段性主线。行业层面，电子、有色金属、通信、机械设备等方向涨幅居前，TMT、医药、贵金属等方向表现突出，银行、食品饮料、红利等低波动资产则出现分化。消息面上，上周政策与产业催化密集落地。政策端，央行下半年工作会议继续强调适度宽松货币政策，并提出推进债券市场“科技板”建设；8月3日，修订后的《集成电路布图设计保护条例》公布，将于10月15日起施行，为芯片设计、集成光子和量子等新型集成电路知识产权保护提供制度支撑。产业端，半导体、AI硬件、机器人均有具体催化：8月4日，英伟达方面宣布CPO进入量产阶段，8月5日又在FMS 2026上发布SCADA存储架构，带动市场对AI算力互联和存储效率升级的关注；机器人方向，谷歌Gemini Robotics 2系列模型发布、宇树科技8月10日启动申购，叠加8月中下旬机器人产业会议预期，推动具身智能链条热度升温。...",
+        "index": "iwc_index_news_v5_vector",
+        "score": 193.4339,
+        "extra": {
+          "publish_source": "腾讯新闻",
+          "real_publish_source": "界面新闻",
+          "host_name": "new.qq.com",
+          "de_groupid": "c2ad6b1cff0903eb",
+          "site_tags": []
+        },
+        "name": "admin",
+        "status": 0,
+        "data_source": "NEWS_VECTOR",
+        "source_original": "政策与产业催化密集落地，A股成长风格领跑周线反弹，南方基金旗下司南投顾关注后续市场风格变化及政策验证上周A股主要宽基指数整体回暖，沪深300周涨约2.3%，中证1000涨幅超过8%；创业板指周涨6.55%，科创100周涨约14%，科技成长资产成为阶段性主线。行业层面，电子、有色金属、通信、机械设备等方向涨幅居前，TMT、医药、贵金属等方向表现突出，银行、食品饮料、红利等低波动资产则出现分化。消息面上，上周政策与产业催化密集落地。政策端，央行下半年工作会议继续强调适度宽松货币政策，并提出推进债券市场“科技板”建设；8月3日，修订后的《集成电路布图设计保护条例》公布，将于10月15日起施行，为芯片设计、集成光子和量子等新型集成电路知识产权保护提供制度支撑。产业端，半导体、AI硬件、机器人均有具体催化：8月4日，英伟达方面宣布CPO进入量产阶段，8月5日又在FMS 2026上发布SCADA存储架构，带动市场对AI算力互联和存储效率升级的关注；机器人方向，谷歌Gemini Robotics 2系列模型发布、宇树科技8月10日启动申购，叠加8月中下旬机器人产业会议预期，推动具身智能链条热度升温。...",
+        "publish_time": 1786333448,
+        "publish_date": "2026-08-10 11:44:08",
+        "traceability_type": 0,
+        "site_authority": 2,
+        "modify_time": 0,
+        "operation_type": 0
+      },
+      {
+        "channel": "news",
+        "id": "ea205236f364ec6f_2",
+        "uid": "ea205236f364ec6f",
+        "url": "https://xueqiu.com/3453579358/404330790?md5__1038=n4%2BxgD9D0DRG0%3D3DtYDsf3grxu0CDni0D4WTID",
+        "title": "24小时市场行情动态（2026年8月10日8时）",
+        "summary": "三、政策与产业：三个变量重写下周定价 货币端：央行8月5日买断式逆回购大额净投放，8月1日下半年工作会议定调\"适度宽松+降融资中间费用\"，个人贷款综合成本上限落地（四大行消费贷/经营贷年化上限6%），流动性底盘稳。产业端：①八大多晶硅企业签反内卷倡议（不低于成本销售）+美232条对多晶硅设21美元/kg底价及15%关税，光伏供给侧修复与海外壁垒同步；②《电力安全生产十五五行动计划》点名电力芯片、特高压组部件攻关，全国负荷15.57亿千瓦新高；③央企低空经济纳入产业焕新清单；④长鑫科技8月10日纳入MSCI中国全股票指数生效，宇树科技同日科创板申购。开放端：中阿（1300亿）、中马（扩至2200亿）本币互换续签；香港5年期人民币国债期货上市；证监港证监十项合作（ETF快速注册、人民币期货扩容）",
+        "index": "iwc_index_news_v5_vector",
+        "score": 103.1971,
+        "extra": {
+          "publish_source": "雪球",
+          "real_publish_source": "雪球",
+          "host_name": "xueqiu.com",
+          "de_groupid": "f4a6dc45c26d23ca",
+          "site_tags": []
+        },
+        "name": "admin",
+        "status": 0,
+        "data_source": "NEWS_VECTOR",
+        "source_original": "三、政策与产业：三个变量重写下周定价 货币端：央行8月5日买断式逆回购大额净投放，8月1日下半年工作会议定调\"适度宽松+降融资中间费用\"，个人贷款综合成本上限落地（四大行消费贷/经营贷年化上限6%），流动性底盘稳。产业端：①八大多晶硅企业签反内卷倡议（不低于成本销售）+美232条对多晶硅设21美元/kg底价及15%关税，光伏供给侧修复与海外壁垒同步；②《电力安全生产十五五行动计划》点名电力芯片、特高压组部件攻关，全国负荷15.57亿千瓦新高；③央企低空经济纳入产业焕新清单；④长鑫科技8月10日纳入MSCI中国全股票指数生效，宇树科技同日科创板申购。开放端：中阿（1300亿）、中马（扩至2200亿）本币互换续签；香港5年期人民币国债期货上市；证监港证监十项合作（ETF快速注册、人民币期货扩容）",
+        "publish_time": 1786320786,
+        "publish_date": "2026-08-10 08:13:06",
+        "traceability_type": 0,
+        "site_authority": 1,
+        "modify_time": 0,
+        "operation_type": 0
+      }
+    ],
+    "abtest_info": "",
+    "took": 765,
+    "total": 20,
+    "ab": {
+      "scene_id": "xkqxpvhms",
+      "layer_exp": [
+        {
+          "layer_id": "qp_layer",
+          "exp_id": "qp_base"
+        },
+        {
+          "layer_id": "mix_layer",
+          "exp_id": "mix_base"
+        },
+        {
+          "layer_id": "multi_search_layer",
+          "exp_id": "multi_search_base"
+        }
+      ]
+    },
+    "header": {
+      "search_query": [
+        "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件"
+      ],
+      "query": "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件",
+      "integrity_result": true,
+      "intents": [],
+      "intent": "资讯消息-新闻"
+    },
+    "content_data": []
+  }
+}

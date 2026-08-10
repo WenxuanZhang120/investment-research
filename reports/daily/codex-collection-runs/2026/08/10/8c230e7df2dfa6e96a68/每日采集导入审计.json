@@ -1,0 +1,33 @@
+{
+  "import_schema_version": 1,
+  "collection_id": "industry_policy_news-2026-08-10",
+  "dataset_kind": "news",
+  "source": "iwencai",
+  "query": "最近三日A股重要产业政策、行业监管、产业扶持及重大技术产业事件",
+  "as_of_date": "2026-08-10",
+  "collection_scope": {
+    "scope_schema_version": 1,
+    "scope_type": "market_wide",
+    "topic_id": "industry_policy_news"
+  },
+  "collector": {
+    "method": "codex_agent",
+    "tool": "news-search",
+    "raw_response_unmodified": true
+  },
+  "fetched_at_start": "2026-08-10T19:12:13.638971+08:00",
+  "fetched_at_end": "2026-08-10T19:12:13.638971+08:00",
+  "response_count": 1,
+  "raw_first_preserved": true,
+  "processing_requested": true,
+  "dry_run": false,
+  "raw_snapshots": [
+    "data/raw/iwencai/2026/08/10/20260810T191213638971+0800_a09017f0012872a6e399.json"
+  ],
+  "normalized_outputs": [
+    "data/normalized/runs/iwencai/2026/08/10/b08541640afec97ed2b9"
+  ],
+  "investment_judgment_included": false,
+  "automatic_trading_enabled": false,
+  "credential_value_persisted": false
+}

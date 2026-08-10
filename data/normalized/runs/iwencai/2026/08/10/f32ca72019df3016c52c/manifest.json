@@ -1,0 +1,55 @@
+{
+  "bundle_schema_version": 1,
+  "bundle_id": "f32ca72019df3016c52c",
+  "normalizer_version": "1.2.0",
+  "taxonomy_version": "1.2.0",
+  "source": "iwencai",
+  "source_raw_record_id": "ab50e00ddaef0fce93fe",
+  "fetched_at": "2026-08-10T19:12:09.978881+08:00",
+  "collection_scope": {
+    "scope_schema_version": 1,
+    "scope_type": "p0_securities",
+    "priority": "P0",
+    "target_source_manifest": "data/derived/runs/screening/2026/08/07/b8e8a88ce7d140110835/manifest.json",
+    "target_as_of_date": "2026-08-07",
+    "target_security_codes": [
+      "000001.SZ",
+      "000987.SZ",
+      "002142.SZ",
+      "002736.SZ",
+      "002966.SZ",
+      "600000.SH",
+      "600036.SH",
+      "600919.SH",
+      "601009.SH",
+      "601077.SH",
+      "601166.SH",
+      "601169.SH",
+      "601288.SH",
+      "601328.SH",
+      "601398.SH",
+      "601688.SH",
+      "601825.SH",
+      "601838.SH",
+      "601881.SH",
+      "601916.SH",
+      "601939.SH",
+      "601963.SH",
+      "601988.SH",
+      "601998.SH"
+    ]
+  },
+  "coverage": {
+    "record_count": 0,
+    "event_types": []
+  },
+  "table": {
+    "logical_name": "news_items",
+    "file": "news_items.jsonl",
+    "primary_key": [
+      "news_id"
+    ],
+    "record_count": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

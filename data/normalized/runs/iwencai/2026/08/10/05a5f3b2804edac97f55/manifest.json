@@ -1,0 +1,29 @@
+{
+  "bundle_schema_version": 1,
+  "bundle_id": "05a5f3b2804edac97f55",
+  "normalizer_version": "1.2.0",
+  "taxonomy_version": "1.2.0",
+  "source": "iwencai",
+  "source_raw_record_id": "18d3cd0eb551bda2ce28",
+  "fetched_at": "2026-08-10T19:12:11.155000+08:00",
+  "collection_scope": {
+    "scope_schema_version": 1,
+    "scope_type": "market_wide",
+    "topic_id": "china_macro_policy_news"
+  },
+  "coverage": {
+    "record_count": 8,
+    "event_types": [
+      "other_announcement"
+    ]
+  },
+  "table": {
+    "logical_name": "news_items",
+    "file": "news_items.jsonl",
+    "primary_key": [
+      "news_id"
+    ],
+    "record_count": 8,
+    "sha256": "ce8220897b3da8230532d767022b9923a4baa0d9a4042551b7a46ec63f2c7f4b"
+  }
+}

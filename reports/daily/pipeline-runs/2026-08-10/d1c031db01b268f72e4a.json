@@ -1,0 +1,460 @@
+{
+  "run_schema_version": 1,
+  "run_id": "d1c031db01b268f72e4a",
+  "pipeline_version": "1.2.0",
+  "config_sha256": "77e59a78cbe54bfe541b2b6150c9c6a8cf4e9f10cd9ae5c29f0a77abaf450f6a",
+  "llm_calls_allowed": false,
+  "external_collection_enabled": false,
+  "readiness": {
+    "schema_version": 1,
+    "status": "work_planned",
+    "planned_step_count": 5,
+    "incomplete_job_count": 3,
+    "financial_jobs": [
+      {
+        "job_id": "2026q1_base_resume",
+        "period_end": "2026-03-31",
+        "collection_status": "complete",
+        "collection_errors": [],
+        "normalization_status": "up_to_date",
+        "normalized_manifest": "data/normalized/runs/iwencai/2026/08/08/958d1944b9726944ca39/manifest.json"
+      },
+      {
+        "job_id": "2024fy_advanced_inputs",
+        "period_end": "2024-12-31",
+        "collection_status": "complete",
+        "collection_errors": [],
+        "normalization_status": "up_to_date",
+        "normalized_manifest": "data/normalized/runs/iwencai/2026/08/09/e061123b4d1164cda321/manifest.json"
+      },
+      {
+        "job_id": "2025fy_advanced_supplement",
+        "period_end": "2025-12-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      },
+      {
+        "job_id": "2025q1_advanced_inputs",
+        "period_end": "2025-03-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      },
+      {
+        "job_id": "2026q1_advanced_supplement",
+        "period_end": "2026-03-31",
+        "collection_status": "not_started",
+        "collection_errors": [],
+        "normalization_status": "waiting_for_complete_input",
+        "normalized_manifest": null
+      }
+    ],
+    "basic_financial_metrics": [
+      {
+        "job_id": "2026q1_base_resume",
+        "status": "up_to_date",
+        "source_manifest": "data/normalized/runs/iwencai/2026/08/08/958d1944b9726944ca39/manifest.json",
+        "derived_manifest": "data/derived/runs/iwencai/2026/08/08/588bb40581c5187e678c/manifest.json"
+      }
+    ],
+    "advanced_financial_metrics": {
+      "job_ids": [
+        "2024fy_advanced_inputs",
+        "2025fy_advanced_supplement",
+        "2025q1_advanced_inputs",
+        "2026q1_advanced_supplement"
+      ],
+      "status": "waiting_for_normalized_inputs",
+      "waiting_for": [
+        "2025fy_advanced_supplement",
+        "2025q1_advanced_inputs",
+        "2026q1_advanced_supplement"
+      ],
+      "source_manifests": [
+        "data/normalized/runs/iwencai/2026/08/09/e061123b4d1164cda321/manifest.json"
+      ],
+      "derived_manifest": null
+    },
+    "research": {
+      "schema_version": 1,
+      "status": "work_planned",
+      "planned_step_count": 5,
+      "monitoring": {
+        "matched_snapshot_count": 10,
+        "routes": [
+          {
+            "route_id": "p0_share_repurchase_announcements",
+            "stream": "announcements",
+            "query_match_type": "prefix",
+            "query_sha256": "1bdc075ee76d4b7a14f3e85db4ec3e71f9015d827bbbfd49d152de1a788f81f6",
+            "matched_snapshot_count": 2,
+            "snapshots": [
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/09/20260809T184517980520+0800_2da6b7d4e1e4939d3ef1.json",
+                "raw_record_id": "2da6b7d4e1e4939d3ef1",
+                "bundle_id": "bc65507dfb62a0e27e15",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/09/bc65507dfb62a0e27e15/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-09"
+              },
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/10/20260810T191209181010+0800_8d108cbd8e3c6177adc6.json",
+                "raw_record_id": "8d108cbd8e3c6177adc6",
+                "bundle_id": "71f7a66c6058581fa026",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/10/71f7a66c6058581fa026/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-10"
+              }
+            ],
+            "reports": [
+              {
+                "as_of_date": "2026-08-09",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/events/2026/08/09/383ef9d863669f45680c/manifest.json",
+                "status": "up_to_date"
+              },
+              {
+                "as_of_date": "2026-08-10",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/events/2026/08/10/2b3bd7b330228c2a93d3/manifest.json",
+                "status": "planned"
+              }
+            ]
+          },
+          {
+            "route_id": "p0_important_company_news",
+            "stream": "news",
+            "query_match_type": "prefix",
+            "query_sha256": "48add55f2793924da3817ec71c3b4eafb7bcd6475fde6ddd704618d52877eb87",
+            "matched_snapshot_count": 2,
+            "snapshots": [
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/09/20260809T184518866885+0800_81d951d819f535a2cd7b.json",
+                "raw_record_id": "81d951d819f535a2cd7b",
+                "bundle_id": "959e4558d089dad4f0ff",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/09/959e4558d089dad4f0ff/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-09"
+              },
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/10/20260810T191209978881+0800_ab50e00ddaef0fce93fe.json",
+                "raw_record_id": "ab50e00ddaef0fce93fe",
+                "bundle_id": "f32ca72019df3016c52c",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/10/f32ca72019df3016c52c/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-10"
+              }
+            ],
+            "reports": [
+              {
+                "as_of_date": "2026-08-09",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/09/b37cd6d2b5224d379bf1/manifest.json",
+                "status": "up_to_date"
+              },
+              {
+                "as_of_date": "2026-08-10",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/10/06c6e90c5f359a0235b4/manifest.json",
+                "status": "planned"
+              }
+            ]
+          },
+          {
+            "route_id": "china_macro_policy_news",
+            "stream": "news",
+            "query_match_type": "exact",
+            "query_sha256": "4d939014921b2a325e61249baa97870b0db674efb4a10224fd35d0de12432942",
+            "matched_snapshot_count": 2,
+            "snapshots": [
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/09/20260809T184520406768+0800_95519d3def373cf38df1.json",
+                "raw_record_id": "95519d3def373cf38df1",
+                "bundle_id": "35a8dfe453c5c33b2501",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/09/35a8dfe453c5c33b2501/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-09"
+              },
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/10/20260810T191211155000+0800_18d3cd0eb551bda2ce28.json",
+                "raw_record_id": "18d3cd0eb551bda2ce28",
+                "bundle_id": "05a5f3b2804edac97f55",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/10/05a5f3b2804edac97f55/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-10"
+              }
+            ],
+            "reports": [
+              {
+                "as_of_date": "2026-08-09",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/09/5b440013a1f24198cd5f/manifest.json",
+                "status": "up_to_date"
+              },
+              {
+                "as_of_date": "2026-08-10",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/10/1d04051261700fcf1f50/manifest.json",
+                "status": "planned"
+              }
+            ]
+          },
+          {
+            "route_id": "global_macro_market_news",
+            "stream": "news",
+            "query_match_type": "exact",
+            "query_sha256": "10ba268b759166e9f6cf754fd51d7b41aeb9bec3b06ad9c79e8feb624ea2e8c8",
+            "matched_snapshot_count": 2,
+            "snapshots": [
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/09/20260809T184522170734+0800_9d1359e703deabbf891b.json",
+                "raw_record_id": "9d1359e703deabbf891b",
+                "bundle_id": "e5b85911ad7e8bb29b9c",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/09/e5b85911ad7e8bb29b9c/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-09"
+              },
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/10/20260810T191212638946+0800_ed58a4c64c77d565b1d2.json",
+                "raw_record_id": "ed58a4c64c77d565b1d2",
+                "bundle_id": "6b04eaf6e6a38592e841",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/10/6b04eaf6e6a38592e841/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-10"
+              }
+            ],
+            "reports": [
+              {
+                "as_of_date": "2026-08-09",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/09/10e82c3949c93135e6cd/manifest.json",
+                "status": "up_to_date"
+              },
+              {
+                "as_of_date": "2026-08-10",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/10/272c29cd3ff77aa346c5/manifest.json",
+                "status": "planned"
+              }
+            ]
+          },
+          {
+            "route_id": "industry_policy_news",
+            "stream": "news",
+            "query_match_type": "exact",
+            "query_sha256": "288f31b95f71ee0aead1eccbd56bbe4dbb5a721d8f5e7e5b52ec7a07349b4540",
+            "matched_snapshot_count": 2,
+            "snapshots": [
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/09/20260809T184523138817+0800_b0bbf8969ea7e68e015f.json",
+                "raw_record_id": "b0bbf8969ea7e68e015f",
+                "bundle_id": "a9a47f8e82ccb2385318",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/09/a9a47f8e82ccb2385318/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-09"
+              },
+              {
+                "raw_snapshot": "data/raw/iwencai/2026/08/10/20260810T191213638971+0800_a09017f0012872a6e399.json",
+                "raw_record_id": "a09017f0012872a6e399",
+                "bundle_id": "b08541640afec97ed2b9",
+                "normalized_manifest": "data/normalized/runs/iwencai/2026/08/10/b08541640afec97ed2b9/manifest.json",
+                "normalization_status": "up_to_date",
+                "report_date": "2026-08-10"
+              }
+            ],
+            "reports": [
+              {
+                "as_of_date": "2026-08-09",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/09/e16c869f0d0d895a25ad/manifest.json",
+                "status": "up_to_date"
+              },
+              {
+                "as_of_date": "2026-08-10",
+                "source_manifest_count": 1,
+                "manifest": "reports/daily/monitoring/news/2026/08/10/b33cd4fccaedcb017455/manifest.json",
+                "status": "planned"
+              }
+            ]
+          }
+        ]
+      },
+      "screening": {
+        "status": "up_to_date",
+        "as_of_date": "2026-08-07",
+        "financial_period_end": "2026-03-31",
+        "market_manifest": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/manifest.json",
+        "metric_manifest": "data/derived/runs/iwencai/2026/08/08/588bb40581c5187e678c/manifest.json",
+        "derived_manifest": "data/derived/runs/screening/2026/08/07/b8e8a88ce7d140110835/manifest.json"
+      }
+    }
+  },
+  "status": "succeeded",
+  "started_at": "2026-08-10T12:15:11.251695+00:00",
+  "finished_at": "2026-08-10T12:16:27.557734+00:00",
+  "step_count": 8,
+  "steps": [
+    {
+      "stage": "status",
+      "step_id": "financial_collection_status",
+      "command": [
+        "scripts/run_financial_collection_plan.py",
+        "status"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-10T12:15:11.251883+00:00",
+      "finished_at": "2026-08-10T12:15:12.356600+00:00",
+      "stdout_sha256": "53ce0d8769c804772e015387453393b470b5d3ea90643c5e9294855aa9f6ecf5",
+      "stdout_bytes": 2044,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "publish_p0_share_repurchase_announcements_2b3bd7b330228c2a93d3",
+      "command": [
+        "scripts/publish_daily_monitoring_report.py",
+        "events",
+        "data/normalized/runs/iwencai/2026/08/10/71f7a66c6058581fa026/manifest.json",
+        "--date",
+        "2026-08-10",
+        "--reports-root",
+        "reports/daily"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-10T12:15:12.356688+00:00",
+      "finished_at": "2026-08-10T12:15:12.456456+00:00",
+      "stdout_sha256": "dcf3a24c8157a78309fc2792aaede99053be6cd530d55c6d850cb6f58e5b1747",
+      "stdout_bytes": 78,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "publish_p0_important_company_news_06c6e90c5f359a0235b4",
+      "command": [
+        "scripts/publish_daily_monitoring_report.py",
+        "news",
+        "data/normalized/runs/iwencai/2026/08/10/f32ca72019df3016c52c/manifest.json",
+        "--date",
+        "2026-08-10",
+        "--reports-root",
+        "reports/daily"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-10T12:15:12.456513+00:00",
+      "finished_at": "2026-08-10T12:15:12.557544+00:00",
+      "stdout_sha256": "1340ef9a6fb6a6a96edbe25f001cf7cdcde378d537de94c7c81190880b2acfcd",
+      "stdout_bytes": 76,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "publish_china_macro_policy_news_1d04051261700fcf1f50",
+      "command": [
+        "scripts/publish_daily_monitoring_report.py",
+        "news",
+        "data/normalized/runs/iwencai/2026/08/10/05a5f3b2804edac97f55/manifest.json",
+        "--date",
+        "2026-08-10",
+        "--reports-root",
+        "reports/daily"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-10T12:15:12.557624+00:00",
+      "finished_at": "2026-08-10T12:15:12.705718+00:00",
+      "stdout_sha256": "4ea55089674c84e729b6f7055153f7e8d05bd05df31c9f97e1a7bc32ce9cb628",
+      "stdout_bytes": 76,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "publish_global_macro_market_news_272c29cd3ff77aa346c5",
+      "command": [
+        "scripts/publish_daily_monitoring_report.py",
+        "news",
+        "data/normalized/runs/iwencai/2026/08/10/6b04eaf6e6a38592e841/manifest.json",
+        "--date",
+        "2026-08-10",
+        "--reports-root",
+        "reports/daily"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-10T12:15:12.705773+00:00",
+      "finished_at": "2026-08-10T12:15:12.809180+00:00",
+      "stdout_sha256": "a8acfcae09d51d7da8db09445ddad57107456dacb884c1dc65a18aae3576aed6",
+      "stdout_bytes": 76,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "publish_industry_policy_news_b33cd4fccaedcb017455",
+      "command": [
+        "scripts/publish_daily_monitoring_report.py",
+        "news",
+        "data/normalized/runs/iwencai/2026/08/10/b08541640afec97ed2b9/manifest.json",
+        "--date",
+        "2026-08-10",
+        "--reports-root",
+        "reports/daily"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-10T12:15:12.809269+00:00",
+      "finished_at": "2026-08-10T12:15:12.916927+00:00",
+      "stdout_sha256": "dfeb8e82a78eed68754872d2afb2f772fcbb48b854aff136ba698bdaeac3031d",
+      "stdout_bytes": 76,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "reporting",
+      "step_id": "system_completion_audit",
+      "command": [
+        "scripts/audit_system_completion.py"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-10T12:15:12.917009+00:00",
+      "finished_at": "2026-08-10T12:15:51.517575+00:00",
+      "stdout_sha256": "d7b961a1f485ce80d858483fd290a396f7a802153c8b0135ae743c1ecea1d2cc",
+      "stdout_bytes": 8174,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    },
+    {
+      "stage": "validation",
+      "step_id": "repository_integrity",
+      "command": [
+        "scripts/validate_repository.py"
+      ],
+      "status": "succeeded",
+      "exit_code": 0,
+      "error_type": null,
+      "started_at": "2026-08-10T12:15:51.517912+00:00",
+      "finished_at": "2026-08-10T12:16:27.557647+00:00",
+      "stdout_sha256": "bef69c1ffe676156336680a5bd19dfef400a8b9e7fc47005f02b8e6edd0c8e67",
+      "stdout_bytes": 39,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0
+    }
+  ]
+}

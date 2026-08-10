@@ -180,6 +180,77 @@ class ImportCodexCollectionTests(unittest.TestCase):
         validated = validate_collection_artifact(artifact)
         self.assertEqual(validated["dataset_kind"], "announcements")
 
+    def test_accepts_successful_empty_announcement_response(self):
+        artifact = self.artifact()
+        artifact["dataset_kind"] = "announcements"
+        artifact["collector"]["tool"] = "announcement-search"
+        artifact["responses"][0]["raw_response"] = {
+            "status_code": 0,
+            "status_msg": "OK",
+            "total": 0,
+            "data": [],
+        }
+        artifact["responses"][0]["raw_field_names"] = []
+        self.write_artifact(artifact)
+
+        result = import_collection(
+            self.artifact_path, repository_root=self.root, process=True
+        )
+
+        self.assertEqual(result["dataset_kind"], "announcements")
+        self.assertEqual(len(result["normalized_outputs"]), 1)
+        snapshot = self.root / result["raw_snapshots"][0]
+        envelope = json.loads(snapshot.read_text(encoding="utf-8"))
+        self.assertEqual(envelope["metadata"]["raw_field_names"], [])
+        manifest = json.loads(
+            (
+                self.root
+                / result["normalized_outputs"][0]
+                / "manifest.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["coverage"]["record_count"], 0)
+
+    def test_rejects_failed_empty_announcement_response(self):
+        artifact = self.artifact()
+        artifact["dataset_kind"] = "announcements"
+        artifact["collector"]["tool"] = "announcement-search"
+        artifact["responses"][0]["raw_response"] = {
+            "status_code": 1,
+            "total": 0,
+            "data": [],
+        }
+        artifact["responses"][0]["raw_field_names"] = []
+
+        with self.assertRaisesRegex(CodexCollectionError, "no detectable"):
+            validate_collection_artifact(artifact)
+
+    def test_rejects_empty_market_response_even_when_successful(self):
+        artifact = self.artifact()
+        artifact["responses"][0]["raw_response"] = {
+            "status_code": 0,
+            "total": 0,
+            "data": [],
+        }
+        artifact["responses"][0]["raw_field_names"] = []
+
+        with self.assertRaisesRegex(CodexCollectionError, "no detectable"):
+            validate_collection_artifact(artifact)
+
+    def test_rejects_empty_search_page_when_reported_total_is_nonzero(self):
+        artifact = self.artifact()
+        artifact["dataset_kind"] = "news"
+        artifact["collector"]["tool"] = "news-search"
+        artifact["responses"][0]["raw_response"] = {
+            "status_code": 0,
+            "total": 1,
+            "data": [],
+        }
+        artifact["responses"][0]["raw_field_names"] = []
+
+        with self.assertRaisesRegex(CodexCollectionError, "no detectable"):
+            validate_collection_artifact(artifact)
+
     def test_etf_collection_uses_independent_raw_first_normalizer(self):
         artifact = self.artifact()
         artifact["collection_id"] = "daily-etf-20260809"
