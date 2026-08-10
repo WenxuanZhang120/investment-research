@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "data:sync": "node scripts/generate-portfolio-snapshot.mjs",
+    "data:sync": "node scripts/generate-portfolio-snapshot.mjs && node scripts/generate-research-snapshot.mjs",
     "prebuild": "pnpm data:sync",
     "build": "next build --webpack",
     "start": "next start",
