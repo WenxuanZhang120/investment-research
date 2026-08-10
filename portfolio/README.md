@@ -1,47 +1,44 @@
 # 投资组合管理
 
-本目录保存组合数据规范和可公开的脱敏研究卡片。真实持仓、交易流水、账户标签和未脱敏决策属于个人隐私，必须放在 `portfolio/private/` 或使用 `*.private.*` 文件名；这些路径已被 Git 忽略。
+本目录直接保存 ChatGPT 和研究系统需要读取的脱敏组合记录，不再额外套一层 `public/` 目录。
 
-## 本地文件
+## 当前有效数据
+
+以下文件是当前持仓的正式记录，提交到 `main` 后可直接读取：
 
 ```text
-portfolio/private/
-├── holdings.csv
-├── transactions.csv
-└── investment_cards/
-    └── <security_code>.json
+portfolio/
+├── holdings.csv          # 当前持仓与平均成本
+├── transactions.csv      # 历史成交记录
+└── execution_status.json # 最近一次执行状态与费用前现金
 ```
 
-从 `holdings.template.csv`、`transactions.template.csv` 和 `investment_card.template.json` 复制空模板后填写。模板没有示例持仓或交易。
+记录来自用户报告，不替代券商对账单。未知费用、税费和实时市值保持为空，不猜测补零。
 
 验证命令：
 
 ```bash
 python3 scripts/validate_portfolio.py \
-  --holdings portfolio/private/holdings.csv \
-  --transactions portfolio/private/transactions.csv \
-  --cards portfolio/private/investment_cards
+  --holdings portfolio/holdings.csv \
+  --transactions portfolio/transactions.csv
+python3 scripts/validate_repository.py
 ```
 
-验证器只输出文件、行号和字段错误，不回显持仓数量、成本或交易内容。它检查表头、必填字段、日期、数值范围、交易类型、投资卡字段和目标权重范围，不计算收益，也不作投资判断。
+## 模板与私密文件
 
-投资卡还要求投资者明确维护 `thesis_status`、`valuation_status` 和 `risk_status`。持仓复核工具只把这些人工状态与实际/目标权重组合成候选类别：
+- `holdings.template.csv`、`transactions.template.csv` 和其他 `*.template.*` 文件是空白格式模板，不是当前持仓，也不会填入真实数据。
+- 券商账号、外部订单号、身份信息、未脱敏流水和对账单必须保存在 `portfolio/private/` 或 `*.private.*` 文件中；这些路径不会进入 Git。
+- 公开的 `holdings.csv`、`transactions.csv` 和 `execution_status.json` 必须移除账户、订单和身份标识。
 
-```bash
-python3 scripts/classify_portfolio_review.py \
-  --holdings portfolio/private/holdings.csv \
-  --cards portfolio/private/investment_cards \
-  --output portfolio/private/review.json
-```
+## 更新规则
 
-thesis 已破坏优先进入 `EXIT_candidate`，重大风险进入 `TRIM_candidate`；低于目标权重且 thesis 完整、估值有吸引力时才进入 `ADD_candidate`。信息不充分一律进入 `REVIEW`。这些仍是复核候选，不是自动交易指令。
+用户报告持仓变化后，应更新上述三个正式文件，运行字段与仓库完整性验证，然后合并到 `main`，最后从 `main` 重新读取确认。
 
 ## 字段边界
 
 - `quantity`、`average_cost` 和 `market_value` 必须为非负数；
-- `target_weight` 是 0—1 的比例；
-- 证券代码使用仓库标准格式（例如带交易所后缀的代码），但验证器暂不猜测或补全后缀；
-- 投资卡必须明确 thesis、why_now、关键假设、thesis breakers、催化剂、风险和估值框架；
-- 任何公开输出必须先脱敏，且不得包含券商账号、外部订单号等账户标识。
+- `target_weight` 是0至1的比例；
+- 证券代码使用带交易所后缀的仓库标准格式；
+- 持仓复核只生成研究候选，不构成自动交易指令。
 
-`investment_policy.template.json` 用于在投资前明确目标、期限、风险承受能力、流动性需求、允许/禁止资产、集中度和再平衡规则。真实个人约束应保存在 `portfolio/private/`。
+`investment_policy.template.json` 用于在投资前明确目标、期限、风险承受能力、流动性需求、允许或禁止资产、集中度和再平衡规则。真实个人约束仍应保存在 `portfolio/private/`。
