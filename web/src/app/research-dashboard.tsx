@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createDecision, logout, updateDecision } from "@/app/actions";
+import ContentReader from "@/app/content-reader";
 import type { PortfolioPosition, PortfolioSnapshot } from "@/lib/types";
 import type {
   FinancialPeriod,
@@ -182,19 +183,6 @@ function SecurityDrawer({ security, research, onClose, onOpenJournal }: { securi
       </aside>
     </div>
   );
-}
-
-function ContentReader({ item, onClose }: { item: ResearchContentItem; onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><article className="reader-drawer" role="dialog" aria-modal="true" aria-label={item.title}>
-    <header><div><span className={`content-type type-${item.type}`}>{contentLabels[item.type]}</span><h2>{item.title}</h2><p>{item.date.slice(0, 10)} · {item.source}</p></div><button className="icon-button" onClick={onClose} aria-label="关闭阅读器">×</button></header>
-    <div className="reader-content">{item.content ? <pre>{item.content}</pre> : <><p className="reader-summary">{item.summary}</p>{item.securityName && <div className="reader-meta"><span>关联证券</span><strong>{item.securityName} {item.securityCode}</strong></div>}</>}</div>
-    <footer>{item.url ? <a className="primary-action link-action" href={item.url} target="_blank" rel="noreferrer">打开原始来源</a> : <span className="source-note">内容来自仓库内已归档文档</span>}<button className="secondary-action" onClick={onClose}>关闭</button></footer>
-  </article></div>;
 }
 
 function securityFromHolding(position: PortfolioPosition): ScreeningSecurity {
