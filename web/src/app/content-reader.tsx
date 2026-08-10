@@ -57,7 +57,7 @@ function parseLinkedTitle(value: string) {
 }
 
 function parseDailyReport(content: string): DailyReport | null {
-  if (!/^# .+(新闻|公告).+日报/m.test(content) || !/^## (新闻|公告)明细/m.test(content)) return null;
+  if (!/^# .*(新闻|公告).*日报/m.test(content) || !/^## (新闻|公告)明细/m.test(content)) return null;
 
   const lines = content.replace(/\r\n/g, "\n").split("\n");
   const title = lines.find((line) => line.startsWith("# "))?.slice(2).trim() ?? "每日内容索引";
