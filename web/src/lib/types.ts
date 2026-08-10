@@ -33,4 +33,10 @@ export type PortfolioSnapshot = {
   executedPrincipalBeforeFees: number;
   estimatedRemainingCashBeforeFees: number;
   positions: PortfolioPosition[];
+  liveData?: {
+    status: "live" | "fallback";
+    branch: string;
+    checkedAt: string;
+    message: string | null;
+  };
 };

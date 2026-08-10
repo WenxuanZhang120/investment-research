@@ -80,6 +80,13 @@ export type ResearchSnapshot = {
     records: number;
     status: "ready" | "partial" | "missing";
   }>;
+  liveData?: {
+    status: "live" | "fallback";
+    branch: string;
+    latestDate: string | null;
+    checkedAt: string;
+    message: string | null;
+  };
 };
 
 export type SecurityFinancialResponse = {
