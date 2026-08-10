@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-08-10T04:25:29.056Z",
+  "fixedGitHubSource": {
+    "repository": "WenxuanZhang120/investment-research",
+    "branch": "codex/github-connector-small-files",
+    "directory": "portfolio/public",
+    "holdingsFile": "portfolio/public/holdings.csv",
+    "executionFile": "portfolio/public/execution_status.json"
+  },
+  "asOfDate": "2026-08-10",
+  "source": "user_reported",
+  "positionCount": 3,
+  "quoteCoverage": {
+    "available": 1,
+    "total": 3
+  },
+  "executedPrincipalBeforeFees": 2245.2,
+  "estimatedRemainingCashBeforeFees": 5754.8,
+  "positions": [
+    {
+      "asOfDate": "2026-08-10",
+      "securityCode": "601398.SH",
+      "securityName": "工商银行",
+      "quantity": 100,
+      "averageCost": 7.5,
+      "currency": "CNY",
+      "costBasis": 750,
+      "targetWeight": 0.098,
+      "notes": "用户报告成交；已移除账户和订单标识；费用未知",
+      "latestPrice": 7.53,
+      "quoteDate": "2026-08-07",
+      "marketValue": 753,
+      "quoteSource": "iwencai",
+      "quoteSourceFile": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/market_bars_daily.jsonl",
+      "quoteStatus": "available"
+    },
+    {
+      "asOfDate": "2026-08-10",
+      "securityCode": "513500.SH",
+      "securityName": "博时标普500ETF",
+      "quantity": 300,
+      "averageCost": 2.704,
+      "currency": "CNY",
+      "costBasis": 811.2,
+      "targetWeight": 0.236,
+      "notes": "用户报告成交；已移除账户和订单标识；费用未知",
+      "latestPrice": null,
+      "quoteDate": null,
+      "marketValue": null,
+      "quoteSource": null,
+      "quoteSourceFile": null,
+      "quoteStatus": "missing"
+    },
+    {
+      "asOfDate": "2026-08-10",
+      "securityCode": "513100.SH",
+      "securityName": "国泰纳斯达克100ETF",
+      "quantity": 300,
+      "averageCost": 2.28,
+      "currency": "CNY",
+      "costBasis": 684,
+      "targetWeight": 0.113,
+      "notes": "用户报告成交；已移除账户和订单标识；费用未知",
+      "latestPrice": null,
+      "quoteDate": null,
+      "marketValue": null,
+      "quoteSource": null,
+      "quoteSourceFile": null,
+      "quoteStatus": "missing"
+    }
+  ]
+}
