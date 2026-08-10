@@ -1,0 +1,3 @@
+trade_date,security_code,security_name,side,quantity,price,fees,taxes,currency,notes
+2026-08-10,601398.SH,工商银行,BUY,100,7.50,,,CNY,用户报告成交；账户和外部订单号未记录
+2026-08-10,513500.SH,博时标普500ETF,BUY,300,2.704,,,CNY,用户报告成交；账户和外部订单号未记录
