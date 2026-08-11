@@ -249,6 +249,10 @@ export default function ResearchDashboard({ user, portfolio, research, logs }: D
   }, [research.content, contentType, contentQuery]);
   const topCandidates = research.securities.filter((item) => item.priority === "P0").slice(0, 8);
   const coveredValue = portfolio.positions.reduce((sum, position) => sum + (position.marketValue ?? 0), 0);
+  const overallLatestDate = [research.asOfDate, research.liveData?.latestDate, portfolio.asOfDate]
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? research.asOfDate;
 
   const openSecurity = (security: ScreeningSecurity) => { setSelectedSecurity(security); setGlobalSearch(""); };
   const openHolding = (position: PortfolioPosition) => openSecurity(securityByCode.get(position.securityCode) ?? securityFromHolding(position));
@@ -260,7 +264,7 @@ export default function ResearchDashboard({ user, portfolio, research, logs }: D
     <aside className="workspace-sidebar">
       <div className="workspace-brand"><span>IR</span><div><strong>投资研究台</strong><small>PRIVATE RESEARCH OS</small></div></div>
       <nav>{(Object.keys(viewMeta) as ViewKey[]).map((key) => <button key={key} className={view === key ? "active" : ""} onClick={() => navigate(key)}><span>{viewMeta[key].marker}</span>{viewMeta[key].label}{key === "screening" && <em>{research.coverage.screeningTotal.toLocaleString("zh-CN")}</em>}</button>)}</nav>
-      <div className="sidebar-coverage"><span>数据更新</span><strong>{research.asOfDate}</strong><small>新闻与日报更新至 {research.liveData?.latestDate ?? "2026-08-09"}</small></div>
+      <div className="sidebar-coverage"><span>数据更新</span><strong>{overallLatestDate}</strong><small>持仓 {portfolio.asOfDate} · 研究 {research.liveData?.latestDate ?? research.asOfDate}</small></div>
       <div className="sidebar-user"><span className="user-avatar">{user.name.slice(0, 1).toUpperCase()}</span><div><strong>{user.name}</strong><small>@{user.login}</small></div><form action={logout}><button type="submit" aria-label="退出登录">退出</button></form></div>
     </aside>
 
@@ -273,7 +277,7 @@ export default function ResearchDashboard({ user, portfolio, research, logs }: D
 
       <div className="view-container">
         {view === "overview" && <section className="dashboard-view">
-          <div className="hero-row"><div><p className="section-eyebrow">GOOD AFTERNOON · {research.asOfDate}</p><h1>综合投资研究看板</h1><p>从全市场筛选到单只证券研究，再到新闻、公告、日报和决策日志，所有证据回到同一张桌面。</p></div><button className="primary-action" onClick={() => navigate("screening")}>打开全市场筛选 <span>→</span></button></div>
+          <div className="hero-row"><div><p className="section-eyebrow">DATA THROUGH · {overallLatestDate}</p><h1>综合投资研究看板</h1><p>从全市场筛选到单只证券研究，再到新闻、公告、日报和决策日志，所有证据回到同一张桌面。</p></div><button className="primary-action" onClick={() => navigate("screening")}>打开全市场筛选 <span>→</span></button></div>
           <div className="metric-strip">
             <article><span>全市场筛选</span><strong>{research.coverage.screeningTotal.toLocaleString("zh-CN")}</strong><small>投资范围内证券</small></article>
             <article><span>优先研究池</span><strong>{(research.coverage.priorityCounts.P0 + research.coverage.priorityCounts.P1).toLocaleString("zh-CN")}</strong><small>P0 {research.coverage.priorityCounts.P0} · P1 {research.coverage.priorityCounts.P1}</small></article>
@@ -322,7 +326,7 @@ export default function ResearchDashboard({ user, portfolio, research, logs }: D
 
         {view === "data" && <section className="dashboard-view">
           <div className="section-title-row"><div><p className="section-eyebrow">DATA LINEAGE & COVERAGE</p><h1>数据状态</h1><p>每一个模块都说明来源、时间、记录数量和缺失边界。</p></div><span className={`source-badge ${research.liveData?.status === "fallback" ? "warning" : ""}`}><i />{research.liveData?.status === "live" ? `GitHub 已同步 · ${research.liveData.branch}` : research.liveData?.message ?? `构建于 ${new Date(research.generatedAt).toLocaleString("zh-CN", { hour12: false })}`}</span></div>
-          <div className="source-grid">{research.sources.map((source) => <article className="source-card" key={source.label}><header><span className={`source-status status-${source.status}`}>{source.status === "ready" ? "完整" : source.status === "partial" ? "部分" : "缺失"}</span><strong>{source.label}</strong></header><dl><div><dt>记录</dt><dd>{source.records.toLocaleString("zh-CN")}</dd></div><div><dt>截至</dt><dd>{source.asOfDate}</dd></div><div className="source-path"><dt>来源</dt><dd>{source.path}</dd></div></dl></article>)}</div>
+          <div className="source-grid"><article className="source-card"><header><span className={`source-status status-${portfolio.liveData?.status === "fallback" ? "partial" : "ready"}`}>{portfolio.liveData?.status === "fallback" ? "兜底" : "完整"}</span><strong>公开持仓</strong></header><dl><div><dt>记录</dt><dd>{portfolio.positionCount.toLocaleString("zh-CN")}</dd></div><div><dt>截至</dt><dd>{portfolio.asOfDate}</dd></div><div className="source-path"><dt>来源</dt><dd>{portfolio.fixedGitHubSource.branch}:{portfolio.fixedGitHubSource.holdingsFile}</dd></div></dl></article>{research.sources.map((source) => <article className="source-card" key={source.label}><header><span className={`source-status status-${source.status}`}>{source.status === "ready" ? "完整" : source.status === "partial" ? "部分" : "缺失"}</span><strong>{source.label}</strong></header><dl><div><dt>记录</dt><dd>{source.records.toLocaleString("zh-CN")}</dd></div><div><dt>截至</dt><dd>{source.asOfDate}</dd></div><div className="source-path"><dt>来源</dt><dd>{source.path}</dd></div></dl></article>)}</div>
           <div className="data-notes"><article><span>01</span><div><h2>不会补造行情</h2><p>单只证券没有已落库行情时显示空值；不会用成本价、估值或其他近似值冒充市场价格。</p></div></article><article><span>02</span><div><h2>机构研报仍是缺口</h2><p>当前“研究报告”来自内部研究与数据验证文档。机构研报为 0 条，后续需新增独立采集与许可边界。</p></div></article><article><span>03</span><div><h2>筛选不是交易指令</h2><p>评分只用于排列研究优先级，必须结合证券详情、反证和决策日志继续研究。</p></div></article></div>
         </section>}
       </div>
