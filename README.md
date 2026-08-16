@@ -25,8 +25,8 @@ Raw 原始响应
 Python 确定性数据管道
   ↓
 GitHub 投资研究仓库
-  ↓
-结构化投资数据库
+  ├→ 隐私白名单公开快照 + GitHub Pages
+  └→ 结构化投资数据库
   ↓
 ChatGPT 投资分析流程
   ↓
@@ -42,6 +42,18 @@ Python 离线处理入口为 `python3 scripts/run_daily_pipeline.py`。其版本
 同一入口也会按版本化查询路由发现本地公告与新闻 Raw，自动判断是否需要重新标准化，并生成不可变的 `reports/daily/monitoring/` 报告包。每个报告包包含事实索引、来源清单、来源清单哈希、报告哈希、时点覆盖和“无投资判断／无自动交易”标记。全市场筛选仅在完整市场与财务指标输入就绪、且对应规则版本尚未处理时运行。
 
 `.github/workflows/daily-offline-pipeline.yml` 继续作为独立的只读复核任务，在工作日北京时间 18:00 运行离线入口。它不持有数据源凭据、不负责采集和推送；Codex 每日任务负责在本地完成采集、导入和验证，只有全部通过后才能发布仓库变更。
+
+公开展示层位于 `site/`，是与现有私有动态 `web/` 分离的纯静态站点。`main` 上的数据变更通过仓库验证后，GitHub Actions 会确定性生成只含白名单字段的公开快照、构建站点并部署到 GitHub Pages；无需人工重新制作网页。部署失败时线上保留上一次成功版本。站点只展示采集状态、市场／ETF、公司资料和公开研究成果，不包含 Raw、持仓、交易、决策日志、凭据或账户信息。
+
+本地复核公开站：
+
+```bash
+python3 scripts/export_public_site.py --output-dir site/public/data
+pnpm --dir site build
+python3 scripts/validate_public_site.py site/dist
+```
+
+`site/public/data/` 和 `site/dist/` 都是可重建的忽略目录，不应提交；Pages 工作流会从同一 Git commit 的已验证来源重新生成并校验完整 artifact。
 
 仓库仍保留旧的 `.github/workflows/manual-financial-collection.yml` 和 `IWENCAI_API_KEY` 采集代码，供历史审计与未来兼容检查；该入口目前没有可由用户配置的有效凭据，不属于新的每日运行路径，也不应被 Codex 定时任务调用。新的日常入口只接受 Codex 工具返回的无凭据采集产物。
 
@@ -86,6 +98,7 @@ python3 scripts/run_guarded_financial_collection.py \
 │   └── quarterly/
 ├── research_queue/
 ├── decision_journal/
+├── site/
 └── scripts/
 ```
 
@@ -103,6 +116,7 @@ python3 scripts/run_guarded_financial_collection.py \
 | `reports/quarterly/` | 保存季度研究和投资组合复盘报告。 |
 | `research_queue/` | 保存等待进一步研究的证券和主题。 |
 | `decision_journal/` | 保存投资决策及后续复盘记录。 |
+| `site/` | GitHub Pages 纯静态公开站；构建期只接收白名单快照。 |
 | `scripts/` | 保存未来的数据采集、标准化、处理和报告脚本。 |
 
 ## 核心设计原则
@@ -175,6 +189,7 @@ confidence
 - 第八阶段已建立研究优先级筛选：全市场初筛生成 P0/P1/P2/Reject 队列，持仓复核根据投资者明确维护的 thesis、估值、风险和目标权重状态生成 ADD/HOLD/TRIM/EXIT/REVIEW 候选；两者均不自动交易。
 - 第九阶段已建立结构化分析与复盘工作流：研究档案区分事实、推断和判断，覆盖业务、增长、三情景估值、红队、组合适配、仓位计划、thesis breakers、决策、监控和事后复盘；最终权限固定为投资者。
 - 仓库持续验证已启用：GitHub Actions 在 main、功能分支和 Pull Request 上运行全部单元测试，并检查 raw 哈希、查询日志、标准化/派生清单哈希、配置 JSON 和 GitHub 单文件上限。
+- 公开 A/B/C/D 研究站已实现静态构建、分片加载、来源哈希和 Pages artifact 专项验证；页面会分别展示“管道执行状态”和“数据就绪度”，缺失的 ETF、行情或财务覆盖不会被补造。
 
 ## 尚未实现
 

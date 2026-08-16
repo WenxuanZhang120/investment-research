@@ -333,10 +333,6 @@ def load_collection_artifact(path: Path) -> Dict[str, Any]:
 
 
 def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
-    try:
-        assert_public_payload_safe(document)
-    except PublicPayloadSafetyError as error:
-        raise CodexCollectionError(str(error)) from error
     if document.get("schema_version") != ARTIFACT_SCHEMA_VERSION:
         raise CodexCollectionError(
             f"schema_version must be {ARTIFACT_SCHEMA_VERSION}"
@@ -364,6 +360,10 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
         dataset_kind=dataset_kind,
         query=query,
     )
+    try:
+        assert_public_payload_safe(document)
+    except PublicPayloadSafetyError as error:
+        raise CodexCollectionError(str(error)) from error
     collector = document.get("collector")
     if not isinstance(collector, dict):
         raise CodexCollectionError("collector must be an object")

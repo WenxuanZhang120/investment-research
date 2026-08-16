@@ -35,6 +35,8 @@ iWencai → Raw → 解析 → Normalized → Derived → 验证
                                               ▼
                                       GitHub 中央仓库
                                               │
+                                              ├── 白名单快照 → GitHub Pages（公开只读）
+                                              │
                                               ▼
                                   ChatGPT（研究 / 风险审查）
                                               │
@@ -157,7 +159,15 @@ GitHub 是代码、公开研究数据、配置、测试、报告、运行记录�
 
 API 凭据、登录会话、身份与账户信息、未脱敏持仓和交易流水不得进入公开仓库。最终验证覆盖 Git 已跟踪文件与未被忽略的未跟踪发布候选，包括 Raw 和审计产物；`.gitignore` 不能保护已经被 Git 跟踪的文件。具体规则以 [`PRIVACY.md`](PRIVACY.md) 为准。
 
-## 10. 失败与变更原则
+## 10. GitHub Pages 公开展示层
+
+GitHub Pages 是中央仓库之后的只读展示层，不是新的数据源或数据库。`scripts/export_public_site.py` 只从已验证的标准化、衍生、报告和运行清单中选择明确白名单字段，生成到固定的 `site/public/data/`；导出器不得读取或复制 `data/raw/`、`portfolio/`、`decision_journal/`、`private/`、`.codex-collection-inbox/` 或环境文件。
+
+公开站位于独立的 `site/`，使用纯静态 HTML、CSS、JavaScript 和按需 JSON 分片，不依赖服务器、登录、数据库、Server Actions 或运行时数据抓取。市场、ETF、公司和研究内容必须保留实际覆盖状态；“流水线执行成功”“来源 artifact 可用”和“研究输入完整就绪”是不同状态，页面不得互相替代或据此推导投资结论。
+
+`main` 的 push 先运行现有仓库验证。只有验证成功，Pages job 才执行确定性导出、锁定依赖安装、静态构建以及 `scripts/validate_public_site.py` 的路径、哈希、大小和隐私检查，最后上传单一 Pages artifact。任一步失败都不部署，线上继续保留上一次成功版本。日常任务只提交经过验证的公开数据、报告和代码；`site/public/data/` 与 `site/dist/` 均为可重建本地产物，不进入 Git。
+
+## 11. 失败与变更原则
 
 - 未知字段或不完整数据应明确失败或标记缺失，不能猜测补全；
 - 原始快照不可覆盖，新的解析规则应重放已有 Raw 数据；
@@ -166,7 +176,7 @@ API 凭据、登录会话、身份与账户信息、未脱敏持仓和交易流�
 - 自动化可以生成研究材料，但不能自动生成或执行交易指令；
 - 最终权限始终属于投资者。
 
-## 11. Token 与模型使用原则
+## 12. Token 与模型使用原则
 
 Token 优化顺序是：
 

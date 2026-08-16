@@ -2,19 +2,25 @@ name: Validate research repository
 
 on:
   push:
-    branches: ["main", "codex/**"]
+    branches:
+      - main
+      - "codex/**"
   pull_request:
 
 permissions:
   contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Run unit tests
@@ -33,3 +39,63 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python3 scripts/audit_system_completion.py
+
+  build-pages:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Check out the validated revision
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Set up pnpm and Node.js
+        uses: pnpm/setup@v2
+        with:
+          package-json-file: site/package.json
+          runtime: node@24
+          cache: true
+          cache-dependency-path: site/pnpm-lock.yaml
+          install: false
+      - name: Install locked site dependencies
+        run: pnpm --dir site install --frozen-lockfile
+      - name: Export allowlisted public data
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/export_public_site.py --output-dir site/public/data
+      - name: Build static site
+        run: pnpm --dir site build
+      - name: Validate the complete Pages artifact
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/validate_public_site.py site/dist
+      - name: Configure GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v6
+      - name: Upload GitHub Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/dist
+
+  deploy-pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v5

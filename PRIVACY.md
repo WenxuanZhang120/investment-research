@@ -51,3 +51,13 @@ git diff --cached
 Codex 每日采集产物同样不得包含 Token、Cookie、Authorization 请求头、密码或其他凭据字段。临时收件箱 `.codex-collection-inbox/` 不进入 Git；采集器必须原样保存实际收到的完整已安装 skill 输出，不得绕过 skill 直接请求数据提供方 OpenAPI。只有完整输出本身不含敏感认证或账户上下文、且经过统一安全门与导入器验证的 Raw 快照和便携审计文件才能进入公开仓库。若命中安全门，完整响应只能留在忽略的收件箱或 `private/` 隔离区，不得删除字段后伪装为原始响应。
 
 下载的采集产物不得直接复制进仓库。专用导入器必须先验证凭据排除标记、Raw 哈希、查询日志和路径边界；导入报告不得保存 Actions 下载目录或其他本机绝对路径。
+
+## GitHub Pages 公开边界
+
+Pages 不是整个仓库的镜像。`scripts/export_public_site.py` 只能向固定的 `site/public/data/` 生成字段白名单快照，并且只允许读取已验证的标准化数据、衍生数据、公开报告和运行清单。以下路径及其内容不得进入 Pages artifact：
+
+- `data/raw/`、`.codex-collection-inbox/`、任意 `private/` 和 `.env*`；
+- `portfolio/`、`decision_journal/` 以及私有动态站点生成的组合快照；
+- 查询原文、工具响应正文、日志 stdout/stderr、本机绝对路径或认证上下文。
+
+`scripts/validate_public_site.py site/dist` 必须在上传前复核 artifact 的允许路径、文件类型、文件大小、JSON 清单哈希和公开载荷安全规则。站点数据清单必须精确覆盖 artifact 内的 JSON 数据文件；未知文件、source map、符号链接、硬链接或敏感字段均阻止部署。`site/public/data/` 和 `site/dist/` 是忽略的可重建目录，不能作为绕开仓库验证的持久化来源。

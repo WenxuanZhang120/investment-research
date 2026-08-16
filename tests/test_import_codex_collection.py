@@ -128,6 +128,16 @@ class ImportCodexCollectionTests(unittest.TestCase):
         with self.assertRaisesRegex(CodexCollectionError, "Bearer credential value"):
             validate_collection_artifact(artifact)
 
+        self.payload.pop("diagnostic")
+        artifact = self.artifact()
+        artifact["responses"][0]["raw_response"]["source_url"] = (
+            "https://example.invalid/data?api_key=test-only-secret"
+        )
+        with self.assertRaisesRegex(
+            CodexCollectionError, "URL credential query value"
+        ):
+            validate_collection_artifact(artifact)
+
     def test_rejects_explicit_account_identifier_fields(self):
         artifact = self.artifact()
         artifact["responses"][0]["raw_response"]["资金账号"] = "redacted"

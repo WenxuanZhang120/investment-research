@@ -156,6 +156,25 @@ class SaveRawResponseTests(unittest.TestCase):
 
         self.assertFalse(self.raw_root.exists())
 
+    def test_rejects_sensitive_url_value_before_creating_public_raw_files(self) -> None:
+        with self.assertRaisesRegex(
+            PublicPayloadSafetyError, "URL credential query value"
+        ):
+            save_raw_response(
+                {
+                    "status": "ok",
+                    "source_url": (
+                        "https://example.invalid/data?access_token=test-only-secret"
+                    ),
+                },
+                source="iwencai",
+                query="test query",
+                raw_root=self.raw_root,
+                fetched_at=self.fetched_at,
+            )
+
+        self.assertFalse(self.raw_root.exists())
+
     def test_command_line_entry_point_saves_local_json(self) -> None:
         input_path = Path(self.temporary_directory.name) / "response.json"
         input_path.write_text(json.dumps(self.payload), encoding="utf-8")

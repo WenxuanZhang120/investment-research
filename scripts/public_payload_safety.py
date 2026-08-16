@@ -3,8 +3,11 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import re
 from typing import Any
+from urllib.parse import unquote_plus, urlsplit
 
 
 _CAMEL_CASE_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
@@ -112,9 +115,131 @@ BEARER_CREDENTIAL_PATTERN = re.compile(
     r"(?![A-Za-z0-9._~+/=-])"
 )
 
+URL_QUERY_PAIR_PATTERN = re.compile(
+    r"(?i)(?:&amp;|[?&#])([^=&#\s\"'<>]+)=([^&#\s\"'<>]*)"
+)
+ABSOLUTE_URL_PATTERN = re.compile(
+    r"(?i)\b[a-z][a-z0-9+.-]*://[^\s\"'<>]+"
+)
+URL_QUERY_CREDENTIAL_FIELD_NAMES = frozenset(
+    {
+        "token",
+        "access_token",
+        "refresh_token",
+        "id_token",
+        "auth_token",
+        "authentication_token",
+        "session_token",
+        "api_key",
+        "apikey",
+        "client_secret",
+        "authorization",
+        "password",
+        "passwd",
+        "cookie",
+        "x_amz_security_token",
+        "x_amz_signature",
+        "x_amz_credential",
+    }
+)
+
+AUTHORIZATION_HEADER_PATTERN = re.compile(
+    r"(?i)(?<![A-Za-z0-9_-])[\"']?(?:proxy-)?authorization[\"']?"
+    r"[\t ]*:[\t ]*[\"']?[^\s\"'<>;,}]+"
+)
+
+# A Basic scheme alone is normal documentation prose.  Candidates are decoded
+# below and rejected only when they are valid base64 containing the user/password
+# separator required by HTTP Basic credentials.
+BASIC_CREDENTIAL_CANDIDATE_PATTERN = re.compile(
+    r"(?i)(?<![A-Za-z])basic[\t ]+([A-Za-z0-9+/]{4,}={0,2})"
+    r"(?![A-Za-z0-9+/=])"
+)
+
+# Header-shaped cookie material is high confidence; ordinary phrases such as
+# "cookie policy" and "Set-Cookie behavior" do not have a line-leading header
+# plus name=value pair and remain publishable.
+COOKIE_HEADER_PATTERN = re.compile(
+    r"(?i)(?<![A-Za-z0-9_-])[\"']?(?:cookie|set-cookie)[\"']?"
+    r"[\t ]*:[\t ]*[\"']?"
+    r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+=[^;\s,\r\n]+"
+)
+
+# Local filesystem paths must never be copied into public artifacts.  HTTP(S)
+# URLs are removed before this check so a legitimate public URL path such as
+# ``https://example.com/home/article`` is not mistaken for a local home path.
+POSIX_LOCAL_PATH_PATTERN = re.compile(
+    r"(?i)(?<![A-Za-z0-9._~-])/(?:users|home|tmp|private|var|volumes|opt|etc|"
+    r"root|usr|srv|mnt|workspace|app|data|storage|run)"
+    r"(?:/|\b)"
+)
+WINDOWS_LOCAL_PATH_PATTERN = re.compile(
+    r"(?i)(?<![A-Za-z0-9])(?:[A-Z]:[\\/][^\s\"'<>]+"
+    r"|\\\\[^\\\s]+\\[^\\\s]+)"
+)
+
 
 class PublicPayloadSafetyError(ValueError):
     """Raised without echoing the sensitive field name or value."""
+
+
+def _contains_basic_credential(value: str) -> bool:
+    for match in BASIC_CREDENTIAL_CANDIDATE_PATTERN.finditer(value):
+        candidate = match.group(1)
+        padded = candidate + "=" * (-len(candidate) % 4)
+        try:
+            decoded = base64.b64decode(padded, validate=True)
+        except (binascii.Error, ValueError):
+            continue
+        if b":" in decoded:
+            return True
+    return False
+
+
+def _contains_url_query_credential(value: str) -> bool:
+    for match in URL_QUERY_PAIR_PATTERN.finditer(value):
+        try:
+            key = normalize_field_name(unquote_plus(match.group(1)))
+        except (UnicodeError, ValueError):
+            continue
+        if key in URL_QUERY_CREDENTIAL_FIELD_NAMES and match.group(2):
+            return True
+    return False
+
+
+def _contains_url_userinfo(value: str) -> bool:
+    for match in ABSOLUTE_URL_PATTERN.finditer(value):
+        candidate = match.group(0).rstrip(".,);]")
+        try:
+            parsed = urlsplit(candidate)
+            if parsed.username not in (None, "") or parsed.password not in (None, ""):
+                return True
+        except (UnicodeError, ValueError):
+            continue
+    return False
+
+
+def _contains_forbidden_local_path(value: str) -> bool:
+    visible_parts = []
+    cursor = 0
+    for match in ABSOLUTE_URL_PATTERN.finditer(value):
+        visible_parts.append(value[cursor : match.start()])
+        candidate = match.group(0).rstrip(".,);]")
+        try:
+            scheme = urlsplit(candidate).scheme.casefold()
+        except (UnicodeError, ValueError):
+            scheme = ""
+        if scheme == "file":
+            return True
+        if scheme not in {"http", "https"}:
+            visible_parts.append(match.group(0))
+        cursor = match.end()
+    visible_parts.append(value[cursor:])
+    non_http_text = " ".join(visible_parts)
+    return bool(
+        POSIX_LOCAL_PATH_PATTERN.search(non_http_text)
+        or WINDOWS_LOCAL_PATH_PATTERN.search(non_http_text)
+    )
 
 
 def normalize_field_name(value: Any) -> str:
@@ -197,7 +322,32 @@ def assert_public_payload_safe(value: Any, *, location: str = "$") -> None:
         for child in value:
             assert_public_payload_safe(child, location=f"{location}[]")
         return
-    if isinstance(value, str) and BEARER_CREDENTIAL_PATTERN.search(value):
-        raise PublicPayloadSafetyError(
-            f"public payload contains a forbidden Bearer credential value at {location}"
-        )
+    if isinstance(value, str):
+        if BEARER_CREDENTIAL_PATTERN.search(value):
+            raise PublicPayloadSafetyError(
+                f"public payload contains a forbidden Bearer credential value at {location}"
+            )
+        if _contains_url_query_credential(value):
+            raise PublicPayloadSafetyError(
+                f"public payload contains a forbidden URL credential query value at {location}"
+            )
+        if _contains_url_userinfo(value):
+            raise PublicPayloadSafetyError(
+                f"public payload contains a forbidden URL userinfo credential at {location}"
+            )
+        if _contains_basic_credential(value):
+            raise PublicPayloadSafetyError(
+                f"public payload contains a forbidden Basic credential value at {location}"
+            )
+        if AUTHORIZATION_HEADER_PATTERN.search(value):
+            raise PublicPayloadSafetyError(
+                f"public payload contains a forbidden Authorization header value at {location}"
+            )
+        if COOKIE_HEADER_PATTERN.search(value):
+            raise PublicPayloadSafetyError(
+                f"public payload contains a forbidden Cookie header value at {location}"
+            )
+        if _contains_forbidden_local_path(value):
+            raise PublicPayloadSafetyError(
+                f"public payload contains a forbidden local filesystem path at {location}"
+            )
