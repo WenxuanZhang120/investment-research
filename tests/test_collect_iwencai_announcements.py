@@ -65,6 +65,19 @@ class CollectIwencaiAnnouncementsTests(unittest.TestCase):
             )
         self.assertEqual(len(list(self.root.glob("iwencai/*/*/*/*.json"))), 1)
 
+    def test_rejects_sensitive_response_before_public_raw_write(self):
+        response = self.response()
+        response["metadata"] = {"Authorization": "test-only-marker"}
+        with self.assertRaisesRegex(
+            AnnouncementCollectionError, "forbidden credential field"
+        ):
+            collect_announcements(
+                "query",
+                raw_root=self.root,
+                request=lambda **kwargs: response,
+            )
+        self.assertEqual(list(self.root.glob("iwencai/*/*/*/*.json")), [])
+
     def test_requires_key(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(AnnouncementCollectionError, "IWENCAI_API_KEY"):

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import sys
 from datetime import date, datetime
@@ -23,7 +24,9 @@ from scripts.normalize_iwencai_announcements import (  # noqa: E402
     write_bundle as write_event_bundle,
 )
 from scripts.normalize_iwencai_financials import (  # noqa: E402
+    FinancialNormalizationError,
     build_financial_batch,
+    financial_period_evidence,
     write_financial_bundle,
 )
 from scripts.normalize_iwencai_etfs import (  # noqa: E402
@@ -37,6 +40,10 @@ from scripts.normalize_iwencai_market import (  # noqa: E402
 from scripts.normalize_iwencai_news import (  # noqa: E402
     build_news,
     write_bundle as write_news_bundle,
+)
+from scripts.public_payload_safety import (  # noqa: E402
+    PublicPayloadSafetyError,
+    assert_public_payload_safe,
 )
 from scripts.repository_paths import repository_relative_path  # noqa: E402
 from scripts.save_raw_response import (  # noqa: E402
@@ -52,24 +59,15 @@ DATASET_KINDS = {"market", "etf", "financial", "announcements", "news"}
 SOURCE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 COLLECTION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 SECURITY_CODE_PATTERN = re.compile(r"^\d{6}\.(?:SH|SZ)$")
-SENSITIVE_KEYS = {
-    "authorization",
-    "access_token",
-    "refresh_token",
-    "api_key",
-    "apikey",
-    "cookie",
-    "password",
-    "credential",
-    "credentials",
-    "secret",
-    "secrets",
-}
 DEFAULT_REPORTS_ROOT = REPOSITORY_ROOT / "reports" / "daily" / "codex-collection-runs"
 
 
 class CodexCollectionError(ValueError):
     """Raised when an agent collection artifact is unsafe or ambiguous."""
+
+
+class MissingRawFieldsError(CodexCollectionError):
+    """Raised when a raw response exposes no source data fields."""
 
 
 def _canonical(value: Any) -> bytes:
@@ -84,6 +82,10 @@ def _canonical(value: Any) -> bytes:
 
 def _sha256(value: Any) -> str:
     return hashlib.sha256(_canonical(value)).hexdigest()
+
+
+def _text_sha256(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _timestamp(value: Any, *, label: str) -> datetime:
@@ -106,22 +108,6 @@ def _date(value: Any, *, label: str) -> str:
         return date.fromisoformat(value).isoformat()
     except ValueError as error:
         raise CodexCollectionError(f"{label} must be YYYY-MM-DD") from error
-
-
-def _reject_sensitive_keys(value: Any, *, path: str = "$") -> None:
-    if isinstance(value, dict):
-        for key, child in value.items():
-            key_text = str(key).lower().replace("-", "_")
-            if key_text in SENSITIVE_KEYS or key_text.endswith(
-                ("_password", "_secret", "_cookie", "_token", "_api_key")
-            ):
-                raise CodexCollectionError(
-                    f"collection artifact contains a forbidden credential field: {path}.{key}"
-                )
-            _reject_sensitive_keys(child, path=f"{path}.{key}")
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            _reject_sensitive_keys(child, path=f"{path}[{index}]")
 
 
 def extract_raw_field_names(payload: Dict[str, Any]) -> List[str]:
@@ -160,8 +146,122 @@ def extract_raw_field_names(payload: Dict[str, Any]) -> List[str]:
     if isinstance(indicators, list):
         fields.update(name for name in indicators if isinstance(name, str) and name)
     if not fields:
-        raise CodexCollectionError("raw response contains no detectable source fields")
+        raise MissingRawFieldsError("raw response contains no detectable source fields")
     return sorted(fields)
+
+
+def _is_successful_empty_search_response(
+    payload: Dict[str, Any], *, dataset_kind: str
+) -> bool:
+    total = payload.get("total")
+    return (
+        dataset_kind in {"announcements", "news"}
+        and payload.get("status_code") == 0
+        and isinstance(total, int)
+        and not isinstance(total, bool)
+        and total == 0
+        and payload.get("data") == []
+    )
+
+
+def _is_successful_empty_tabular_response(
+    payload: Dict[str, Any], *, dataset_kind: str
+) -> bool:
+    return (
+        dataset_kind in {"market", "etf", "financial"}
+        and payload.get("datas") == []
+        and payload.get("code_count") == 0
+        and (payload.get("status_code") == 0 or payload.get("success") is True)
+    )
+
+
+def _extract_dataset_raw_field_names(
+    payload: Dict[str, Any], *, dataset_kind: str
+) -> List[str]:
+    try:
+        return extract_raw_field_names(payload)
+    except MissingRawFieldsError:
+        if _is_successful_empty_search_response(
+            payload, dataset_kind=dataset_kind
+        ) or _is_successful_empty_tabular_response(
+            payload, dataset_kind=dataset_kind
+        ):
+            return []
+        raise
+
+
+def _positive_int(value: Any, *, label: str) -> int:
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < 1
+    ):
+        raise CodexCollectionError(f"{label} must be a positive integer")
+    return value
+
+
+def _validate_collection_job(
+    value: Any, *, dataset_kind: str, query: str
+) -> Optional[Dict[str, Any]]:
+    if value is None:
+        return None
+    if dataset_kind != "financial" or not isinstance(value, dict):
+        raise CodexCollectionError(
+            "collection_job is only supported as an object for financial data"
+        )
+    expected_keys = {
+        "collection_job_schema_version",
+        "job_id",
+        "request_version",
+        "expected_period_end",
+    }
+    if set(value) != expected_keys:
+        raise CodexCollectionError(
+            "collection_job must contain only the documented contract fields"
+        )
+    if value.get("collection_job_schema_version") != 1:
+        raise CodexCollectionError("collection_job schema_version must be 1")
+    job_id = value.get("job_id")
+    if not isinstance(job_id, str) or not COLLECTION_ID_PATTERN.fullmatch(job_id):
+        raise CodexCollectionError("collection_job.job_id is invalid")
+    request_version = _positive_int(
+        value.get("request_version"), label="collection_job.request_version"
+    )
+    expected_period_end = _date(
+        value.get("expected_period_end"),
+        label="collection_job.expected_period_end",
+    )
+    return {
+        "collection_job_schema_version": 1,
+        "job_id": job_id,
+        "request_version": request_version,
+        "expected_period_end": expected_period_end,
+        "query_sha256": _text_sha256(query),
+    }
+
+
+def _validate_collection_request(value: Any, *, index: int) -> Optional[Dict[str, Any]]:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or value.get("request_schema_version") != 1:
+        raise CodexCollectionError(
+            f"responses[{index}].collection_request schema_version must be 1"
+        )
+    if set(value) != {"request_schema_version", "page", "limit"}:
+        raise CodexCollectionError(
+            f"responses[{index}].collection_request contains unsupported fields"
+        )
+    return {
+        "request_schema_version": 1,
+        "page": _positive_int(
+            value.get("page"),
+            label=f"responses[{index}].collection_request.page",
+        ),
+        "limit": _positive_int(
+            value.get("limit"),
+            label=f"responses[{index}].collection_request.limit",
+        ),
+    }
 
 
 def _validate_collection_scope(value: Any) -> Optional[Dict[str, Any]]:
@@ -233,7 +333,10 @@ def load_collection_artifact(path: Path) -> Dict[str, Any]:
 
 
 def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
-    _reject_sensitive_keys(document)
+    try:
+        assert_public_payload_safe(document)
+    except PublicPayloadSafetyError as error:
+        raise CodexCollectionError(str(error)) from error
     if document.get("schema_version") != ARTIFACT_SCHEMA_VERSION:
         raise CodexCollectionError(
             f"schema_version must be {ARTIFACT_SCHEMA_VERSION}"
@@ -256,6 +359,11 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
         raise CodexCollectionError("query must be a non-empty string")
     as_of_date = _date(document.get("as_of_date"), label="as_of_date")
     collection_scope = _validate_collection_scope(document.get("collection_scope"))
+    collection_job = _validate_collection_job(
+        document.get("collection_job"),
+        dataset_kind=dataset_kind,
+        query=query,
+    )
     collector = document.get("collector")
     if not isinstance(collector, dict):
         raise CodexCollectionError("collector must be an object")
@@ -264,6 +372,10 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
     tool = collector.get("tool")
     if not isinstance(tool, str) or not tool:
         raise CodexCollectionError("collector.tool must be a non-empty string")
+    if collection_job is not None and tool != "hithink-finance-query":
+        raise CodexCollectionError(
+            "financial collection_job requires hithink-finance-query"
+        )
     if collector.get("raw_response_unmodified") is not True:
         raise CodexCollectionError("collector must confirm raw_response_unmodified=true")
 
@@ -283,7 +395,9 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
             raise CodexCollectionError(
                 f"responses[{index}].raw_response must be an object"
             )
-        detected_fields = extract_raw_field_names(raw_response)
+        detected_fields = _extract_dataset_raw_field_names(
+            raw_response, dataset_kind=dataset_kind
+        )
         declared_fields = response.get("raw_field_names")
         if (
             not isinstance(declared_fields, list)
@@ -301,11 +415,15 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
         if identity in seen:
             raise CodexCollectionError("responses must not contain duplicate snapshots")
         seen.add(identity)
+        collection_request = _validate_collection_request(
+            response.get("collection_request"), index=index
+        )
         normalized_responses.append(
             {
                 "fetched_at": fetched_at,
                 "raw_response": raw_response,
                 "raw_field_names": detected_fields,
+                "collection_request": collection_request,
             }
         )
     return {
@@ -316,6 +434,7 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
         "query": query,
         "as_of_date": as_of_date,
         "collection_scope": collection_scope,
+        "collection_job": collection_job,
         "collector": {
             "method": "codex_agent",
             "tool": tool,
@@ -333,6 +452,8 @@ def _existing_snapshot(
     fetched_at: datetime,
     payload_sha256: str,
     collection_scope: Optional[Dict[str, Any]],
+    collection_job: Optional[Dict[str, Any]],
+    collection_request: Optional[Dict[str, Any]],
 ) -> Optional[Path]:
     directory = raw_root.joinpath(
         source,
@@ -355,6 +476,8 @@ def _existing_snapshot(
             == fetched_at.isoformat(timespec="microseconds")
             and metadata.get("payload_sha256") == payload_sha256
             and metadata.get("collection_scope") == collection_scope
+            and metadata.get("collection_job") == collection_job
+            and metadata.get("collection_request") == collection_request
         ):
             return path
     return None
@@ -375,6 +498,8 @@ def _save_responses(
             fetched_at=response["fetched_at"],
             payload_sha256=payload_hash,
             collection_scope=collection.get("collection_scope"),
+            collection_job=collection.get("collection_job"),
+            collection_request=response.get("collection_request"),
         )
         if existing is not None:
             paths.append(existing)
@@ -391,6 +516,8 @@ def _save_responses(
                 collection_method="codex_agent",
                 collector_name=collection["collector"]["tool"],
                 collection_scope=collection.get("collection_scope"),
+                collection_job=collection.get("collection_job"),
+                collection_request=response.get("collection_request"),
             )
         )
     return paths
@@ -522,6 +649,171 @@ def _write_audit(
     return destination
 
 
+def _financial_collection_assessment(
+    collection: Dict[str, Any],
+    *,
+    repository_root: Path,
+) -> Optional[Dict[str, Any]]:
+    if collection["dataset_kind"] != "financial":
+        return None
+    job = collection.get("collection_job")
+    reasons: Set[str] = set()
+    minimum_expected_count = None
+    if job is None:
+        reasons.add("financial_job_contract_missing")
+        expected_period = None
+    else:
+        expected_period = job["expected_period_end"]
+        plan_path = repository_root / "config" / "financial_collection_plan.json"
+        if not plan_path.is_file():
+            reasons.add("financial_plan_missing")
+        else:
+            from scripts.run_financial_collection_plan import load_plan
+
+            plan = load_plan(plan_path)
+            planned_jobs = {
+                item["job_id"]: item for item in plan["jobs"]
+            }
+            planned_job = planned_jobs.get(job["job_id"])
+            if planned_job is None:
+                reasons.add("financial_job_unknown")
+            else:
+                minimum_expected_count = planned_job.get(
+                    "minimum_expected_count"
+                )
+                if planned_job.get("request_version", 1) != job["request_version"]:
+                    reasons.add("financial_request_version_mismatch")
+                if planned_job["period_end"] != job["expected_period_end"]:
+                    reasons.add("financial_plan_period_mismatch")
+                if planned_job["query"] != collection["query"]:
+                    reasons.add("financial_plan_query_mismatch")
+                if _text_sha256(planned_job["query"]) != job["query_sha256"]:
+                    reasons.add("financial_plan_query_hash_mismatch")
+
+    requests = [response.get("collection_request") for response in collection["responses"]]
+    if any(request is None for request in requests):
+        reasons.add("financial_request_pagination_missing")
+
+    pages = [request["page"] for request in requests if request is not None]
+    limits = {request["limit"] for request in requests if request is not None}
+    totals = set()
+    returned_count = 0
+    security_codes: List[str] = []
+    for response in collection["responses"]:
+        raw_response = response["raw_response"]
+        if raw_response.get("success") is False:
+            reasons.add("financial_provider_reported_failure")
+        status_code = raw_response.get("status_code")
+        if status_code is not None and status_code != 0:
+            reasons.add("financial_provider_reported_failure")
+        total = raw_response.get("code_count")
+        if (
+            not isinstance(total, int)
+            or isinstance(total, bool)
+            or total < 0
+        ):
+            reasons.add("financial_code_count_invalid")
+        else:
+            totals.add(total)
+        rows = raw_response.get("datas")
+        if not isinstance(rows, list):
+            reasons.add("financial_datas_missing")
+        else:
+            returned_count += len(rows)
+            for row in rows:
+                if not isinstance(row, dict):
+                    reasons.add("financial_row_invalid")
+                    continue
+                security_code = row.get("股票代码")
+                if not isinstance(security_code, str) or not security_code.strip():
+                    reasons.add("financial_security_code_missing")
+                    continue
+                security_codes.append(security_code.strip())
+
+    if len(pages) != len(set(pages)):
+        reasons.add("financial_duplicate_request_pages")
+    if len(limits) > 1:
+        reasons.add("financial_request_limit_inconsistent")
+    if len(totals) > 1:
+        reasons.add("financial_code_count_inconsistent")
+
+    expected_page_count = None
+    reported_total = next(iter(totals)) if len(totals) == 1 else None
+    limit = next(iter(limits)) if len(limits) == 1 else None
+    unique_security_count = len(set(security_codes))
+    if unique_security_count != len(security_codes):
+        reasons.add("financial_duplicate_security_codes")
+    if (
+        minimum_expected_count is not None
+        and any(total < minimum_expected_count for total in totals)
+    ):
+        reasons.add("financial_below_minimum_expected_count")
+    if reported_total is not None and limit is not None:
+        expected_page_count = max(1, math.ceil(reported_total / limit))
+        if sorted(pages) != list(range(1, expected_page_count + 1)):
+            reasons.add("financial_request_pages_incomplete")
+        if returned_count != reported_total:
+            reasons.add("financial_returned_count_incomplete")
+        if unique_security_count != reported_total:
+            reasons.add("financial_unique_security_count_mismatch")
+        if reported_total == 0:
+            reasons.add("financial_empty_result")
+
+    evidence_values = [
+        financial_period_evidence(response["raw_field_names"])
+        for response in collection["responses"]
+    ]
+    observed_evidence = {
+        name: sorted({period for value in evidence_values for period in value[name]})
+        for name in (
+            "financial_periods",
+            "report_period_label_periods",
+            "filing_date_periods",
+        )
+    }
+    if expected_period is not None:
+        expected_only = [expected_period]
+        if observed_evidence["financial_periods"] != expected_only:
+            reasons.add("financial_period_mismatch")
+        if observed_evidence["report_period_label_periods"] != expected_only:
+            reasons.add("financial_report_period_label_mismatch")
+        if observed_evidence["filing_date_periods"] != expected_only:
+            reasons.add("financial_filing_date_period_mismatch")
+
+    fingerprint = _sha256(
+        {
+            "query": collection["query"],
+            "collection_job": job,
+            "raw_field_names": sorted(
+                {
+                    field
+                    for response in collection["responses"]
+                    for field in response["raw_field_names"]
+                }
+            ),
+            "period_evidence": observed_evidence,
+            "request_pages": sorted(pages),
+            "request_limits": sorted(limits),
+            "reported_totals": sorted(totals),
+        }
+    )[:20]
+    return {
+        "assessment_schema_version": 1,
+        "status": "quarantined_raw_only" if reasons else "ready_to_normalize",
+        "blocked_reasons": sorted(reasons),
+        "fingerprint": fingerprint,
+        "expected_period_end": expected_period,
+        "observed_period_evidence": observed_evidence,
+        "requested_pages": sorted(pages),
+        "request_limit": limit,
+        "reported_total_count": reported_total,
+        "returned_row_count": returned_count,
+        "unique_security_count": unique_security_count,
+        "minimum_expected_count": minimum_expected_count,
+        "expected_page_count": expected_page_count,
+    }
+
+
 def import_collection(
     artifact_path: Path,
     *,
@@ -541,6 +833,10 @@ def import_collection(
     repository_relative_path(raw_root, repository_root=repository_root)
     repository_relative_path(reports_root, repository_root=repository_root)
     collection = validate_collection_artifact(load_collection_artifact(artifact_path))
+    financial_assessment = _financial_collection_assessment(
+        collection,
+        repository_root=repository_root,
+    )
     fetched_values = [item["fetched_at"] for item in collection["responses"]]
     audit = {
         "import_schema_version": IMPORT_SCHEMA_VERSION,
@@ -550,12 +846,31 @@ def import_collection(
         "query": collection["query"],
         "as_of_date": collection["as_of_date"],
         "collection_scope": collection.get("collection_scope"),
+        "collection_job": collection.get("collection_job"),
         "collector": collection["collector"],
+        "collection_requests": [
+            {
+                "fetched_at": response["fetched_at"].isoformat(
+                    timespec="microseconds"
+                ),
+                "collection_request": response.get("collection_request"),
+            }
+            for response in collection["responses"]
+        ],
+        "financial_assessment": financial_assessment,
         "fetched_at_start": min(fetched_values).isoformat(timespec="microseconds"),
         "fetched_at_end": max(fetched_values).isoformat(timespec="microseconds"),
         "response_count": len(collection["responses"]),
         "raw_first_preserved": not dry_run,
         "processing_requested": process,
+        "processing_status": (
+            financial_assessment["status"]
+            if financial_assessment is not None
+            and financial_assessment["blocked_reasons"]
+            else "dry_run_validated"
+            if dry_run
+            else "pending"
+        ),
         "dry_run": dry_run,
         "raw_snapshots": [],
         "normalized_outputs": [],
@@ -569,15 +884,38 @@ def import_collection(
     audit["raw_snapshots"] = _public_paths(
         snapshots, repository_root=repository_root
     )
-    outputs = (
-        normalize_collection(
-            collection,
-            snapshots,
-            repository_root=repository_root,
-        )
-        if process
-        else []
+    processing_blocked = bool(
+        financial_assessment is not None
+        and financial_assessment["blocked_reasons"]
     )
+    outputs: List[Path] = []
+    if process and not processing_blocked:
+        try:
+            outputs = normalize_collection(
+                collection,
+                snapshots,
+                repository_root=repository_root,
+            )
+        except FinancialNormalizationError as error:
+            if financial_assessment is None:
+                raise
+            financial_assessment["status"] = "quarantined_raw_only"
+            financial_assessment["blocked_reasons"] = sorted(
+                {
+                    *financial_assessment["blocked_reasons"],
+                    "financial_normalization_failed",
+                }
+            )
+            financial_assessment["normalization_error"] = str(error).replace(
+                str(repository_root), "."
+            )
+            processing_blocked = True
+    if processing_blocked:
+        audit["processing_status"] = "quarantined_raw_only"
+    elif process:
+        audit["processing_status"] = "normalized"
+    else:
+        audit["processing_status"] = "raw_only_requested"
     audit["normalized_outputs"] = _public_paths(
         outputs, repository_root=repository_root
     )

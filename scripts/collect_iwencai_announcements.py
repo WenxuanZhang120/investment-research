@@ -18,6 +18,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.save_raw_response import DEFAULT_RAW_ROOT, save_raw_response  # noqa: E402
+from scripts.public_payload_safety import PublicPayloadSafetyError  # noqa: E402
 
 
 API_URL = "https://openapi.iwencai.com/v1/comprehensive/search"
@@ -101,12 +102,15 @@ def collect_announcements(
         timeout=timeout,
         api_key=_api_key(),
     )
-    snapshot = save_raw_response(
-        payload,
-        source="iwencai",
-        query=query,
-        raw_root=raw_root,
-    )
+    try:
+        snapshot = save_raw_response(
+            payload,
+            source="iwencai",
+            query=query,
+            raw_root=raw_root,
+        )
+    except PublicPayloadSafetyError as error:
+        raise AnnouncementCollectionError(str(error)) from error
     if payload.get("status_code") != 0:
         raise AnnouncementCollectionError(
             f"gateway status_code is not zero; response saved at {snapshot}"

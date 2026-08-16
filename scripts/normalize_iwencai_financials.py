@@ -68,6 +68,46 @@ class FinancialNormalizationError(ValueError):
     """Raised when financial responses cannot be normalized without guessing."""
 
 
+def financial_period_evidence(
+    raw_field_names: Iterable[str],
+    *,
+    mapping_file: Path = DEFAULT_MAPPING_FILE,
+) -> Dict[str, List[str]]:
+    """Return mapped financial periods without assigning or repairing a period."""
+    mapping_version, mappings = load_field_mappings(mapping_file)
+    parsed = [
+        parse_field_name(
+            name,
+            mappings=mappings,
+            mapping_version=mapping_version,
+        )
+        for name in raw_field_names
+    ]
+
+    def periods(*, category: str, canonical_name: Optional[str] = None) -> List[str]:
+        return sorted(
+            {
+                item["period_end"]
+                for item in parsed
+                if item["category"] == category
+                and (canonical_name is None or item["canonical_field_name"] == canonical_name)
+                and item["period_end"]
+            }
+        )
+
+    return {
+        "financial_periods": periods(category="financial"),
+        "report_period_label_periods": periods(
+            category="financial_metadata",
+            canonical_name="report_period_label",
+        ),
+        "filing_date_periods": periods(
+            category="financial_metadata",
+            canonical_name="filing_date",
+        ),
+    }
+
+
 def _canonical_payload(payload: Any) -> bytes:
     return json.dumps(
         payload,
@@ -107,6 +147,15 @@ def _load_envelope(snapshot_path: Path) -> Tuple[Dict[str, Any], Dict[str, Any]]
         )
     if metadata.get("source") != "iwencai":
         raise FinancialNormalizationError("raw snapshot source must be iwencai")
+    if payload.get("success") is False:
+        raise FinancialNormalizationError(
+            "financial provider response explicitly reported success=false"
+        )
+    status_code = payload.get("status_code")
+    if status_code is not None and status_code != 0:
+        raise FinancialNormalizationError(
+            "financial provider response explicitly reported a failed status_code"
+        )
 
     expected_hash = metadata.get("payload_sha256")
     actual_hash = hashlib.sha256(_canonical_payload(payload)).hexdigest()
@@ -297,6 +346,33 @@ def _optional_positive_int(value: Any, field_name: str) -> Optional[int]:
     return parsed
 
 
+def _pagination_value(
+    metadata: Dict[str, Any],
+    payload: Dict[str, Any],
+    field_name: str,
+) -> Optional[int]:
+    request = metadata.get("collection_request")
+    if request is not None and not isinstance(request, dict):
+        raise FinancialNormalizationError(
+            "raw metadata collection_request must be an object"
+        )
+    metadata_value = (
+        _optional_positive_int(request.get(field_name), f"metadata request {field_name}")
+        if isinstance(request, dict)
+        else None
+    )
+    payload_value = _optional_positive_int(payload.get(field_name), field_name)
+    if (
+        metadata_value is not None
+        and payload_value is not None
+        and metadata_value != payload_value
+    ):
+        raise FinancialNormalizationError(
+            f"metadata request {field_name} conflicts with raw response {field_name}"
+        )
+    return metadata_value if metadata_value is not None else payload_value
+
+
 def _parse_report_label(value: Any) -> Tuple[str, str, str]:
     label = _required_text(value, "report_period_label")
     match = REPORT_LABEL_PATTERN.fullmatch(label)
@@ -418,6 +494,37 @@ def build_financial_tables(
             "financial fields must contain at least one report period"
         )
 
+    collection_job = metadata.get("collection_job")
+    if collection_job is not None:
+        if not isinstance(collection_job, dict):
+            raise FinancialNormalizationError(
+                "raw metadata collection_job must be an object"
+            )
+        expected_period = collection_job.get("expected_period_end")
+        if not isinstance(expected_period, str) or not expected_period:
+            raise FinancialNormalizationError(
+                "raw metadata collection_job requires expected_period_end"
+            )
+        evidence = financial_period_evidence(
+            [descriptor["parsed"]["raw_field_name"] for descriptor in descriptors],
+            mapping_file=mapping_file,
+        )
+        expected_only = [expected_period]
+        if evidence["financial_periods"] != expected_only:
+            raise FinancialNormalizationError(
+                "financial response period does not match collection job: "
+                f"expected {expected_period}, found {evidence['financial_periods']}"
+            )
+        for evidence_name in (
+            "report_period_label_periods",
+            "filing_date_periods",
+        ):
+            if evidence[evidence_name] != expected_only:
+                raise FinancialNormalizationError(
+                    f"{evidence_name} does not match collection job: "
+                    f"expected {expected_period}, found {evidence[evidence_name]}"
+                )
+
     period_groups = {}
     for period_end in period_ends:
         period_facts = [
@@ -457,8 +564,8 @@ def build_financial_tables(
         raise FinancialNormalizationError(
             "financial snapshot must report a valid code_count"
         )
-    page = _optional_positive_int(payload.get("page"), "page")
-    limit = _optional_positive_int(payload.get("limit"), "limit")
+    page = _pagination_value(metadata, payload, "page")
+    limit = _pagination_value(metadata, payload, "limit")
     has_more = payload.get("has_more")
     if has_more not in (True, False, None):
         raise FinancialNormalizationError("has_more must be boolean when present")
@@ -472,6 +579,7 @@ def build_financial_tables(
     )
     tables = {table_name: [] for table_name in TABLE_FILES}
     missing_report_rows: List[Dict[str, Any]] = []
+    source_security_codes: List[str] = []
 
     for row_index, row in enumerate(rows):
         if not isinstance(row, dict):
@@ -487,6 +595,7 @@ def build_financial_tables(
             raise FinancialNormalizationError(
                 f"unsupported A-share security code: {security_code}"
             )
+        source_security_codes.append(security_code)
         security_name = _required_text(name_value, "security_name")
 
         for period_end, period_group in period_groups.items():
@@ -627,6 +736,7 @@ def build_financial_tables(
         "limit": limit,
         "has_more": has_more,
         "missing_report_rows": missing_report_rows,
+        "source_security_codes": source_security_codes,
     }
 
 
@@ -800,6 +910,21 @@ def build_financial_batch(
         if returned_count != total:
             raise FinancialNormalizationError(
                 f"financial query expected {total} rows, found {returned_count}"
+            )
+        source_security_codes = [
+            security_code
+            for part in ordered_parts
+            for security_code in part["source_security_codes"]
+        ]
+        unique_security_count = len(set(source_security_codes))
+        if unique_security_count != len(source_security_codes):
+            raise FinancialNormalizationError(
+                "financial query contains duplicate source security codes across pages"
+            )
+        if unique_security_count != total:
+            raise FinancialNormalizationError(
+                "financial query unique security count does not match code_count: "
+                f"expected {total}, found {unique_security_count}"
             )
         for index, part in enumerate(ordered_parts):
             expected_has_more = index < len(ordered_parts) - 1

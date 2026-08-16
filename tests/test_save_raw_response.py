@@ -12,6 +12,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.save_raw_response import main, save_raw_response  # noqa: E402
+from scripts.public_payload_safety import PublicPayloadSafetyError  # noqa: E402
 
 
 class SaveRawResponseTests(unittest.TestCase):
@@ -112,6 +113,48 @@ class SaveRawResponseTests(unittest.TestCase):
         log_path = self.raw_root / "_query_log/2026/08/08.jsonl"
         entry = json.loads(log_path.read_text(encoding="utf-8"))
         self.assertEqual(entry["collection_scope"], scope)
+
+    def test_preserves_financial_job_and_request_metadata(self) -> None:
+        job = {
+            "collection_job_schema_version": 1,
+            "job_id": "2025fy_test",
+            "request_version": 2,
+            "expected_period_end": "2025-12-31",
+            "query_sha256": "a" * 64,
+        }
+        request = {"request_schema_version": 1, "page": 3, "limit": 100}
+        destination = save_raw_response(
+            self.payload,
+            source="iwencai",
+            query="2025年年报",
+            raw_root=self.raw_root,
+            fetched_at=self.fetched_at,
+            collection_job=job,
+            collection_request=request,
+        )
+
+        envelope = json.loads(destination.read_text(encoding="utf-8"))
+        self.assertEqual(envelope["payload"], self.payload)
+        self.assertEqual(envelope["metadata"]["collection_job"], job)
+        self.assertEqual(envelope["metadata"]["collection_request"], request)
+        log_path = self.raw_root / "_query_log/2026/08/08.jsonl"
+        entry = json.loads(log_path.read_text(encoding="utf-8"))
+        self.assertEqual(entry["collection_job"], job)
+        self.assertEqual(entry["collection_request"], request)
+
+    def test_rejects_sensitive_payload_before_creating_public_raw_files(self) -> None:
+        with self.assertRaisesRegex(
+            PublicPayloadSafetyError, "forbidden credential field"
+        ):
+            save_raw_response(
+                {"data": [], "nested": {"Authorization": "test-only-marker"}},
+                source="iwencai",
+                query="test query",
+                raw_root=self.raw_root,
+                fetched_at=self.fetched_at,
+            )
+
+        self.assertFalse(self.raw_root.exists())
 
     def test_command_line_entry_point_saves_local_json(self) -> None:
         input_path = Path(self.temporary_directory.name) / "response.json"

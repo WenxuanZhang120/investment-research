@@ -61,6 +61,19 @@ class CollectIwencaiNewsTests(unittest.TestCase):
             )
         self.assertEqual(len(list(self.root.glob("iwencai/*/*/*/*.json"))), 1)
 
+    def test_rejects_bearer_value_before_public_raw_write(self):
+        response = self.response()
+        response["diagnostic"] = "Bearer test_only_opaque_token_123456789"
+        with self.assertRaisesRegex(
+            NewsCollectionError, "forbidden Bearer credential value"
+        ):
+            collect_news(
+                "query",
+                raw_root=self.root,
+                request=lambda **kwargs: response,
+            )
+        self.assertEqual(list(self.root.glob("iwencai/*/*/*/*.json")), [])
+
 
 if __name__ == "__main__":
     unittest.main()

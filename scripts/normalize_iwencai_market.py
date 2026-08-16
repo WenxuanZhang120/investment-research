@@ -21,6 +21,11 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.audit_iwencai_response import extract_table_components  # noqa: E402
+from scripts.investment_universe import (  # noqa: E402
+    DEFAULT_UNIVERSE,
+    load_investment_universe,
+    stock_record_allowed,
+)
 from scripts.parse_iwencai_fields import (  # noqa: E402
     DEFAULT_MAPPING_FILE,
     load_field_mappings,
@@ -29,7 +34,7 @@ from scripts.parse_iwencai_fields import (  # noqa: E402
 from scripts.repository_paths import repository_relative_path  # noqa: E402
 
 
-NORMALIZER_VERSION = "2.0.0"
+NORMALIZER_VERSION = "2.2.0"
 RECORD_SCHEMA_VERSION = 2
 BUNDLE_SCHEMA_VERSION = 2
 DEFAULT_NORMALIZED_ROOT = REPOSITORY_ROOT / "data" / "normalized"
@@ -104,7 +109,7 @@ def _reported_total(meta: Dict[str, Any]) -> Optional[int]:
     if isinstance(extra, dict):
         candidates.append(extra.get("code_count"))
     for candidate in candidates:
-        if isinstance(candidate, int):
+        if isinstance(candidate, int) and not isinstance(candidate, bool):
             return candidate
         if isinstance(candidate, str) and candidate.isdigit():
             return int(candidate)
@@ -112,7 +117,7 @@ def _reported_total(meta: Dict[str, Any]) -> Optional[int]:
 
 
 def _optional_int(value: Any) -> Optional[int]:
-    if isinstance(value, int):
+    if isinstance(value, int) and not isinstance(value, bool):
         return value
     if isinstance(value, str) and value.isdigit():
         return int(value)
@@ -319,15 +324,38 @@ def _optional_date(value: Any, field_name: str) -> Optional[str]:
 
 
 def _market_memberships(value: Any) -> List[str]:
-    text = _required_text(value, "market_memberships")
+    if isinstance(value, str):
+        raw_memberships = value.split(";")
+    elif isinstance(value, list):
+        if any(not isinstance(item, str) for item in value):
+            raise NormalizationError(
+                "market_memberships list must contain only strings"
+            )
+        raw_memberships = value
+    else:
+        raise NormalizationError(
+            "market_memberships must be a string or string list"
+        )
     memberships: List[str] = []
-    for item in text.split(";"):
+    for item in raw_memberships:
         normalized = item.strip()
         if normalized and normalized not in memberships:
             memberships.append(normalized)
     if not memberships:
         raise NormalizationError("market_memberships must contain at least one value")
     return memberships
+
+
+def _metadata_as_of_date(metadata: Dict[str, Any]) -> str:
+    value = metadata.get("as_of_date")
+    if not isinstance(value, str):
+        raise NormalizationError(
+            "context-free latest valuation fields require metadata.as_of_date"
+        )
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+    except ValueError as error:
+        raise NormalizationError("metadata.as_of_date must use YYYY-MM-DD") from error
 
 
 def _lineage(descriptor: Dict[str, Any], *, value_present: bool) -> Dict[str, Any]:
@@ -491,8 +519,16 @@ def build_normalized_tables(
             raise NormalizationError(f"{name} must share the close trade date")
 
     market_cap_date = selected["market_cap"]["parsed"]["as_of_date"]  # type: ignore[index]
-    pe_date = selected["pe_ttm"]["parsed"]["as_of_date"]  # type: ignore[index]
-    if not market_cap_date or market_cap_date != pe_date:
+    raw_pe_date = selected["pe_ttm"]["parsed"]["as_of_date"]  # type: ignore[index]
+    if not market_cap_date:
+        raise NormalizationError("market_cap must contain a valid as-of date")
+    if raw_pe_date is None:
+        pe_date = _metadata_as_of_date(metadata)
+        pe_date_source = "metadata.as_of_date"
+    else:
+        pe_date = raw_pe_date
+        pe_date_source = "field_lineage.pe_ttm.as_of_date"
+    if market_cap_date != pe_date:
         raise NormalizationError("valuation fields must share one valid as-of date")
 
     fetched_at = _parse_timestamp(metadata["fetched_at"])
@@ -563,6 +599,14 @@ def build_normalized_tables(
                     "exchange": {
                         "derived_from": "security_code",
                         "rule": "suffix_after_dot",
+                        "normalizer_version": NORMALIZER_VERSION,
+                    },
+                    "market_memberships": {
+                        "derived_from": "field_lineage.market_memberships",
+                        "rule": (
+                            "accept_string_or_string_list_trim_preserve_order_"
+                            "deduplicate"
+                        ),
                         "normalizer_version": NORMALIZER_VERSION,
                     }
                 },
@@ -635,7 +679,7 @@ def build_normalized_tables(
 
         market_cap_present, market_cap_value = _row_value(row, selected["market_cap"])
         pe_present, pe_value = _row_value(row, selected["pe_ttm"])
-        if market_cap_present != pe_present:
+        if pe_present and not market_cap_present:
             raise NormalizationError(
                 f"{security_code} has incomplete valuation fields"
             )
@@ -653,12 +697,23 @@ def build_normalized_tables(
                     "market_cap_currency": selected["market_cap"]["parsed"][  # type: ignore[index]
                         "unit"
                     ],
-                    "pe_ttm": _required_number(pe_value, "pe_ttm"),
+                    "pe_ttm": _optional_number(pe_value, "pe_ttm"),
                     "field_lineage": _field_lineage(
                         selected,
                         ("security_code", "market_cap", "pe_ttm"),
                         row,
                     ),
+                    "derived_lineage": {
+                        "pe_ttm_as_of_date": {
+                            "derived_from": pe_date_source,
+                            "rule": (
+                                "use_explicit_field_date_else_require_matching_"
+                                "metadata_as_of_date"
+                            ),
+                            "value": pe_date,
+                            "normalizer_version": NORMALIZER_VERSION,
+                        }
+                    },
                 }
             )
         else:
@@ -696,6 +751,7 @@ def build_normalized_batch(
     snapshot_paths: Sequence[Path],
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
+    universe_path: Path = DEFAULT_UNIVERSE,
     repository_root: Path = REPOSITORY_ROOT,
 ) -> Dict[str, Any]:
     """Combine a complete ordered page set into one normalized bundle."""
@@ -705,6 +761,8 @@ def build_normalized_batch(
     if len({path.resolve() for path in resolved_paths}) != len(resolved_paths):
         raise NormalizationError("raw snapshot paths must be unique")
 
+    universe = load_investment_universe(universe_path)
+    minimum_expected_count = universe["stocks"]["minimum_expected_count"]
     parts = [
         build_normalized_tables(
             path,
@@ -713,10 +771,15 @@ def build_normalized_batch(
         )
         for path in resolved_paths
     ]
-    if all(part["page_info"]["page"] is not None for part in parts):
-        parts.sort(key=lambda part: part["page_info"]["page"])
-    else:
-        parts.sort(key=lambda part: _parse_timestamp(part["metadata"]["fetched_at"]))
+    if any(
+        part["page_info"][field] is None
+        for part in parts
+        for field in ("page", "limit", "reported_total_count")
+    ):
+        raise NormalizationError(
+            "market batch requires page, limit, and reported total metadata"
+        )
+    parts.sort(key=lambda part: part["page_info"]["page"])
 
     sources = {part["metadata"]["source"] for part in parts}
     queries = {part["metadata"].get("query") for part in parts}
@@ -726,21 +789,32 @@ def build_normalized_batch(
     mapping_version = parts[0]["mapping_version"]
 
     page_numbers = [part["page_info"]["page"] for part in parts]
+    reported_limits = {part["page_info"]["limit"] for part in parts}
     reported_totals = {
         part["page_info"]["reported_total_count"]
         for part in parts
-        if part["page_info"]["reported_total_count"] is not None
     }
-    if len(parts) > 1:
-        if any(page is None for page in page_numbers):
-            raise NormalizationError("multi-snapshot batch requires page metadata")
-        expected_pages = list(range(1, len(parts) + 1))
-        if page_numbers != expected_pages:
-            raise NormalizationError(
-                f"batch pages must be complete and sequential: {page_numbers}"
-            )
-        if len(reported_totals) != 1:
-            raise NormalizationError("batch pages must report one total row count")
+    if len(reported_limits) != 1:
+        raise NormalizationError("market batch pages must report one page limit")
+    if len(reported_totals) != 1:
+        raise NormalizationError("market batch pages must report one total row count")
+    page_limit = next(iter(reported_limits))
+    reported_total = next(iter(reported_totals))
+    if page_limit is None or page_limit <= 0:
+        raise NormalizationError("market batch page limit must be positive")
+    if reported_total is None or reported_total <= 0:
+        raise NormalizationError("market batch reported total must be positive")
+    if reported_total < minimum_expected_count:
+        raise NormalizationError(
+            "market batch reported total "
+            f"{reported_total} is below configured minimum {minimum_expected_count}"
+        )
+    expected_page_count = math.ceil(reported_total / page_limit)
+    expected_pages = list(range(1, expected_page_count + 1))
+    if page_numbers != expected_pages:
+        raise NormalizationError(
+            f"market batch pages must be complete and sequential: {page_numbers}"
+        )
 
     tables: Dict[str, List[Dict[str, Any]]] = {
         table_name: [] for table_name in TABLE_FILES
@@ -750,10 +824,19 @@ def build_normalized_batch(
             tables[table_name].extend(part["tables"][table_name])
     _sort_and_validate_tables(tables)
 
-    reported_total = next(iter(reported_totals)) if reported_totals else None
-    if reported_total is not None and len(tables["security_master"]) != reported_total:
+    if len(tables["security_master"]) != reported_total:
         raise NormalizationError(
             "security_master count does not match the reported source total"
+        )
+    eligible_security_count = sum(
+        stock_record_allowed(record, universe)
+        for record in tables["security_master"]
+    )
+    if eligible_security_count < minimum_expected_count:
+        raise NormalizationError(
+            "market batch eligible security count "
+            f"{eligible_security_count} is below configured minimum "
+            f"{minimum_expected_count}"
         )
 
     timestamps = [
@@ -798,9 +881,14 @@ def build_normalized_batch(
         ),
         "coverage": {
             "source_snapshot_count": len(parts),
-            "page_count": len(parts) if all(page is not None for page in page_numbers) else None,
+            "page_count": len(parts),
+            "expected_page_count": expected_page_count,
             "reported_total_count": reported_total,
             "security_master_count": len(tables["security_master"]),
+            "eligible_security_count": eligible_security_count,
+            "minimum_expected_count": minimum_expected_count,
+            "universe_version": universe["universe_version"],
+            "universe_id": universe["stocks"]["universe_id"],
             "market_bars_daily_count": len(tables["market_bars_daily"]),
             "valuation_snapshots_count": len(tables["valuation_snapshots"]),
             "skipped_market_bars": sum(
@@ -898,12 +986,14 @@ def normalize_snapshots(
     snapshot_paths: Sequence[Path],
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
+    universe_path: Path = DEFAULT_UNIVERSE,
     normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
     repository_root: Path = REPOSITORY_ROOT,
 ) -> Path:
     built = build_normalized_batch(
         snapshot_paths,
         mapping_file=mapping_file,
+        universe_path=universe_path,
         repository_root=repository_root,
     )
     return write_normalized_bundle(built, normalized_root=normalized_root)
@@ -913,12 +1003,14 @@ def normalize_snapshot(
     snapshot_path: Path,
     *,
     mapping_file: Path = DEFAULT_MAPPING_FILE,
+    universe_path: Path = DEFAULT_UNIVERSE,
     normalized_root: Path = DEFAULT_NORMALIZED_ROOT,
     repository_root: Path = REPOSITORY_ROOT,
 ) -> Path:
     return normalize_snapshots(
         [snapshot_path],
         mapping_file=mapping_file,
+        universe_path=universe_path,
         normalized_root=normalized_root,
         repository_root=repository_root,
     )
@@ -941,6 +1033,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Versioned field mapping JSON",
     )
     parser.add_argument(
+        "--universe",
+        type=Path,
+        default=DEFAULT_UNIVERSE,
+        help="Versioned investment-universe JSON",
+    )
+    parser.add_argument(
         "--normalized-root",
         type=Path,
         default=DEFAULT_NORMALIZED_ROOT,
@@ -955,6 +1053,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         destination = normalize_snapshots(
             args.snapshots,
             mapping_file=args.mapping_file,
+            universe_path=args.universe,
             normalized_root=args.normalized_root,
         )
     except (OSError, TypeError, ValueError) as error:

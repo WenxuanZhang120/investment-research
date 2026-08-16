@@ -77,6 +77,118 @@ class CollectIwencaiFinancialsTests(unittest.TestCase):
         )
         self.assertEqual(len(query_log.read_text(encoding="utf-8").splitlines()), 3)
 
+    def test_preserves_provider_response_and_audits_request_metadata(self) -> None:
+        provider_response = self.response(1, total=1)
+        provider_response["status_code"] = 0
+        job = {
+            "collection_job_schema_version": 1,
+            "job_id": "2025fy_test",
+            "request_version": 2,
+            "expected_period_end": "2025-12-31",
+            "query_sha256": "a" * 64,
+        }
+
+        result = collect_query(
+            "全部沪深主板A股2025年年报",
+            limit=100,
+            raw_root=self.raw_root,
+            request_page=lambda **kwargs: provider_response,
+            collection_job=job,
+        )
+
+        document = json.loads(
+            Path(result["snapshot_paths"][0]).read_text(encoding="utf-8")
+        )
+        self.assertEqual(document["payload"], provider_response)
+        self.assertNotIn("page", document["payload"])
+        self.assertEqual(document["metadata"]["collection_job"], job)
+        self.assertEqual(
+            document["metadata"]["collection_request"],
+            {"request_schema_version": 1, "page": 1, "limit": 100},
+        )
+
+    def test_saves_explicit_provider_failure_before_stopping(self) -> None:
+        response = self.response(1, total=1)
+        response["status_code"] = 1
+        with self.assertRaisesRegex(CollectionError, "status_code=1"):
+            collect_query(
+                "全部A股2025年年报",
+                raw_root=self.raw_root,
+                request_page=lambda **kwargs: response,
+            )
+        snapshots = list(self.raw_root.glob("iwencai/*/*/*/*.json"))
+        self.assertEqual(len(snapshots), 1)
+        self.assertEqual(
+            json.loads(snapshots[0].read_text(encoding="utf-8"))["payload"],
+            response,
+        )
+
+    def test_rejects_credential_headers_in_provider_body_without_rewriting(self) -> None:
+        response = self.response(1, total=1)
+        response["claw_headers"] = {"Authorization": "dummy"}
+        with self.assertRaisesRegex(CollectionError, "claw_headers"):
+            collect_query(
+                "全部A股2025年年报",
+                raw_root=self.raw_root,
+                request_page=lambda **kwargs: response,
+            )
+        self.assertEqual(
+            list(self.raw_root.glob("iwencai/*/*/*/*.json")), []
+        )
+
+    def test_rejects_nested_session_identifier_before_public_raw_write(self) -> None:
+        response = self.response(1, total=1)
+        response["metadata"] = {"sessionId": "test-only-marker"}
+        with self.assertRaisesRegex(CollectionError, "forbidden credential field"):
+            collect_query(
+                "全部A股2025年年报",
+                raw_root=self.raw_root,
+                request_page=lambda **kwargs: response,
+            )
+        self.assertEqual(
+            list(self.raw_root.glob("iwencai/*/*/*/*.json")), []
+        )
+
+    def test_bad_period_stops_after_first_raw_snapshot(self) -> None:
+        calls = []
+        response = self.response(1, total=5)
+        response["datas"][0] = {
+            "股票代码": "000000.SZ",
+            "股票简称": "证券0",
+            "公告日期[20260331]": "20260401",
+            "报告期[20261231]": "2026年年报",
+            "营业收入[20260331]": 1,
+        }
+        query = "全部沪深主板A股2025年年报"
+        job = {
+            "collection_job_schema_version": 1,
+            "job_id": "2025fy_test",
+            "request_version": 2,
+            "expected_period_end": "2025-12-31",
+            "query_sha256": "a" * 64,
+        }
+
+        def fake_request(**kwargs):
+            calls.append(kwargs["page"])
+            return response
+
+        with self.assertRaisesRegex(CollectionError, "period contract mismatch"):
+            collect_query(
+                query,
+                limit=2,
+                raw_root=self.raw_root,
+                request_page=fake_request,
+                collection_job=job,
+            )
+
+        self.assertEqual(calls, [1])
+        snapshots = list(self.raw_root.glob("iwencai/*/*/*/*.json"))
+        self.assertEqual(len(snapshots), 1)
+        self.assertEqual(
+            json.loads(snapshots[0].read_text(encoding="utf-8"))["payload"],
+            response,
+        )
+
     def test_saves_response_before_reporting_changed_total(self) -> None:
         def fake_request(**kwargs):
             total = 5 if kwargs["page"] == 1 else 6

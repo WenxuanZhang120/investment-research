@@ -26,7 +26,7 @@ from scripts.parse_iwencai_fields import load_field_mappings, parse_field_name
 from scripts.repository_paths import repository_relative_path
 
 
-NORMALIZER_VERSION = "1.0.0"
+NORMALIZER_VERSION = "1.1.0"
 BUNDLE_SCHEMA_VERSION = 1
 RECORD_SCHEMA_VERSION = 1
 DEFAULT_NORMALIZED_ROOT = REPOSITORY_ROOT / "data" / "normalized"
@@ -160,6 +160,39 @@ def _text(value: Any, label: str, *, required: bool = False) -> Optional[str]:
     return value.strip()
 
 
+def _string_memberships(value: Any, label: str) -> List[str]:
+    if isinstance(value, str):
+        raw_memberships = [value]
+    elif isinstance(value, list):
+        if any(not isinstance(item, str) for item in value):
+            raise EtfNormalizationError(f"{label} list must contain only strings")
+        raw_memberships = value
+    else:
+        raise EtfNormalizationError(f"{label} must be text or a text list")
+
+    memberships: List[str] = []
+    for item in raw_memberships:
+        normalized = item.strip()
+        if normalized and normalized not in memberships:
+            memberships.append(normalized)
+    if not memberships:
+        raise EtfNormalizationError(f"{label} must contain at least one value")
+    return memberships
+
+
+def _canonical_fund_type(
+    value: Any,
+    required_type: str,
+) -> Tuple[str, List[str]]:
+    memberships = _string_memberships(value, "fund_type")
+    required_upper = required_type.upper()
+    if not any(required_upper in membership.upper() for membership in memberships):
+        raise EtfNormalizationError(
+            f"fund type is outside configured ETF scope: {memberships}"
+        )
+    return required_type, memberships
+
+
 def _number(value: Any, label: str) -> Optional[Any]:
     if value in (None, ""):
         return None
@@ -211,7 +244,7 @@ def _lineage(descriptor: Dict[str, Any], present: bool) -> Dict[str, Any]:
 
 
 def _optional_int(value: Any) -> Optional[int]:
-    if isinstance(value, int):
+    if isinstance(value, int) and not isinstance(value, bool):
         return value
     if isinstance(value, str) and value.isdigit():
         return int(value)
@@ -276,12 +309,11 @@ def build_etf_tables(
         family = etf_index_family(tracked_index, universe)
         if family is None:
             raise EtfNormalizationError(f"ETF tracked index is outside configured scope: {tracked_index}")
-        fund_type = _text(values["fund_type"], "fund_type", required=True)
         required_type = universe["etfs"]["required_fund_type"]
-        if fund_type is None or required_type.upper() not in fund_type.upper():
-            raise EtfNormalizationError(
-                f"fund type is outside configured ETF scope: {fund_type}"
-            )
+        fund_type, fund_type_memberships = _canonical_fund_type(
+            values["fund_type"],
+            required_type,
+        )
         lineage = {
             name: _lineage(descriptor, _row_value(row, descriptor)[0])
             for name, descriptor in selected.items()
@@ -307,6 +339,7 @@ def build_etf_tables(
                 "tracked_index": tracked_index,
                 "tracked_index_family": family,
                 "fund_type": fund_type,
+                "fund_type_memberships": fund_type_memberships,
                 "listing_date": _date(values["etf_listing_date"], "listing_date"),
                 "listing_status": _text(values["listing_status"], "listing_status"),
                 "price": _number(values["etf_price"], "price"),
@@ -326,6 +359,27 @@ def build_etf_tables(
                 ),
                 "tracking_error": _number(values["tracking_error"], "tracking_error"),
                 "field_lineage": lineage,
+                "derived_lineage": {
+                    "exchange": {
+                        "derived_from": "etf_code",
+                        "rule": "suffix_after_dot",
+                        "normalizer_version": NORMALIZER_VERSION,
+                    },
+                    "fund_type_memberships": {
+                        "derived_from": "field_lineage.fund_type",
+                        "rule": (
+                            "accept_string_or_string_list_trim_preserve_order_"
+                            "deduplicate"
+                        ),
+                        "normalizer_version": NORMALIZER_VERSION,
+                    },
+                    "fund_type": {
+                        "derived_from": "fund_type_memberships",
+                        "rule": "configured_required_fund_type_membership",
+                        "required_fund_type": required_type,
+                        "normalizer_version": NORMALIZER_VERSION,
+                    },
+                },
             }
         )
     records.sort(key=lambda item: (item["etf_code"], item["as_of_date"]))
@@ -334,6 +388,11 @@ def build_etf_tables(
         raise EtfNormalizationError("ETF response contains duplicate code/date rows")
     meta = component["data"].get("meta")
     meta = meta if isinstance(meta, dict) else {}
+    has_more = meta.get("has_more")
+    if has_more is None and "has_more" in payload:
+        has_more = payload.get("has_more")
+    if has_more is not None and not isinstance(has_more, bool):
+        raise EtfNormalizationError("ETF has_more must be boolean when present")
     return {
         "metadata": metadata,
         "snapshot_path": Path(snapshot_path),
@@ -343,6 +402,7 @@ def build_etf_tables(
         "page": _optional_int(meta.get("page")),
         "limit": _optional_int(meta.get("limit")),
         "reported_total_count": _optional_int(meta.get("code_count") or meta.get("total")),
+        "has_more": has_more,
         "unmapped_fields": sorted(
             item["parsed"]["raw_field_name"]
             for item in descriptors
@@ -371,27 +431,43 @@ def build_etf_batch(
     ]
     if len({part["metadata"].get("query") for part in parts}) != 1:
         raise EtfNormalizationError("ETF pages must share one query")
-    if all(part["page"] is not None for part in parts):
-        parts.sort(key=lambda item: item["page"])
-    elif len(parts) > 1:
-        raise EtfNormalizationError("multi-page ETF batches require page metadata")
-    page_numbers = [part["page"] for part in parts]
-    if len(parts) > 1 and page_numbers != list(range(1, len(parts) + 1)):
-        raise EtfNormalizationError("ETF pages must be complete and sequential")
-    totals = {
-        part["reported_total_count"]
+    if any(
+        part[field] is None
         for part in parts
-        if part["reported_total_count"] is not None
-    }
-    if len(totals) > 1:
+        for field in ("page", "limit", "reported_total_count")
+    ):
+        raise EtfNormalizationError(
+            "ETF batch requires page, limit, and reported total metadata"
+        )
+    parts.sort(key=lambda item: item["page"])
+    page_numbers = [part["page"] for part in parts]
+    limits = {part["limit"] for part in parts}
+    totals = {part["reported_total_count"] for part in parts}
+    if len(limits) != 1:
+        raise EtfNormalizationError("ETF pages report inconsistent limits")
+    if len(totals) != 1:
         raise EtfNormalizationError("ETF pages report inconsistent totals")
+    page_limit = next(iter(limits))
+    total = next(iter(totals))
+    if page_limit is None or page_limit <= 0:
+        raise EtfNormalizationError("ETF page limit must be positive")
+    if total is None or total <= 0:
+        raise EtfNormalizationError("ETF reported total must be positive")
+    expected_page_count = math.ceil(total / page_limit)
+    if page_numbers != list(range(1, expected_page_count + 1)):
+        raise EtfNormalizationError("ETF pages must be complete and sequential")
+    for part in parts:
+        expected_has_more = part["page"] < expected_page_count
+        if part["has_more"] is not None and part["has_more"] is not expected_has_more:
+            raise EtfNormalizationError(
+                f"ETF page {part['page']} has_more conflicts with pagination"
+            )
     records = [record for part in parts for record in part["records"]]
     records.sort(key=lambda item: (item["etf_code"], item["as_of_date"]))
     keys = [(item["etf_code"], item["as_of_date"]) for item in records]
     if len(keys) != len(set(keys)):
         raise EtfNormalizationError("ETF batch contains duplicate code/date rows")
-    total = next(iter(totals)) if totals else None
-    if total is not None and len(records) != total:
+    if len(records) != total:
         raise EtfNormalizationError(
             f"ETF batch expected {total} rows, found {len(records)}"
         )
@@ -419,6 +495,7 @@ def build_etf_batch(
                 "page": part["page"],
                 "limit": part["limit"],
                 "reported_total_count": part["reported_total_count"],
+                "has_more": part["has_more"],
             }
             for part in parts
         ],
@@ -427,6 +504,9 @@ def build_etf_batch(
         ),
         "coverage": {
             "source_snapshot_count": len(parts),
+            "page_count": len(parts),
+            "expected_page_count": expected_page_count,
+            "page_limit": page_limit,
             "reported_total_count": total,
             "etf_count": len(records),
             "tracked_index_family_counts": {

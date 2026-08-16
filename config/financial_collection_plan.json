@@ -1,10 +1,11 @@
 {
-  "plan_version": "1.0.0",
+  "plan_version": "1.2.0",
   "source": "iwencai",
   "page_limit": 100,
   "jobs": [
     {
       "job_id": "2026q1_base_resume",
+      "request_version": 1,
       "universe_id": "all_a_legacy_superset",
       "period_end": "2026-03-31",
       "purpose": "complete_existing_base_financial_batch",
@@ -12,6 +13,7 @@
     },
     {
       "job_id": "2024fy_advanced_inputs",
+      "request_version": 1,
       "universe_id": "all_a_legacy_superset",
       "period_end": "2024-12-31",
       "purpose": "annual_comparable_and_advanced_inputs",
@@ -19,13 +21,30 @@
     },
     {
       "job_id": "2025fy_advanced_supplement",
+      "request_version": 3,
       "universe_id": "cn_sh_sz_main_board_a",
       "period_end": "2025-12-31",
       "purpose": "annual_current_advanced_inputs",
-      "query": "沪深主板A股2025年年报，上市状态为正常上市、ST或*ST，排除创业板、科创板和北交所，查询股票代码、股票简称、定期报告实际披露日期、营业收入、营业利润、利润总额、所得税费用、归属于母公司所有者的净利润、归属于母公司所有者权益合计、所有者权益、货币资金、短期借款、一年内到期的非流动负债、长期借款、应付债券、经营活动产生的现金流量净额、购建固定资产、无形资产和其他长期资产支付的现金"
+      "minimum_expected_count": 3000,
+      "query": "全部沪深主板A股，排除创业板、科创板和北交所，查询2025年12月31日报告期的股票代码、股票简称、定期报告实际披露日期、营业收入、营业利润、利润总额、所得税费用、归属于母公司所有者的净利润、归属于母公司所有者权益合计、所有者权益、货币资金、短期借款、一年内到期的非流动负债、长期借款、应付债券、经营活动产生的现金流量净额、购建固定资产、无形资产和其他长期资产支付的现金",
+      "historical_queries": [
+        {
+          "request_version": 2,
+          "query": "全部沪深主板A股（含ST和*ST股票）2025年年报，排除创业板、科创板和北交所，查询股票代码、股票简称、定期报告实际披露日期、营业收入、营业利润、利润总额、所得税费用、归属于母公司所有者的净利润、归属于母公司所有者权益合计、所有者权益、货币资金、短期借款、一年内到期的非流动负债、长期借款、应付债券、经营活动产生的现金流量净额、购建固定资产、无形资产和其他长期资产支付的现金"
+        },
+        {
+          "request_version": 1,
+          "query": "沪深主板A股2025年年报，上市状态为正常上市、ST或*ST，排除创业板、科创板和北交所，查询股票代码、股票简称、定期报告实际披露日期、营业收入、营业利润、利润总额、所得税费用、归属于母公司所有者的净利润、归属于母公司所有者权益合计、所有者权益、货币资金、短期借款、一年内到期的非流动负债、长期借款、应付债券、经营活动产生的现金流量净额、购建固定资产、无形资产和其他长期资产支付的现金"
+        },
+        {
+          "request_version": 1,
+          "query": "沪深主板A股2025年年报，排除创业板、科创板和北交所，查询股票代码、股票简称、定期报告实际披露日期、营业收入、营业利润、利润总额、所得税费用、归属于母公司所有者的净利润、归属于母公司所有者权益合计、所有者权益、货币资金、短期借款、一年内到期的非流动负债、长期借款、应付债券、经营活动产生的现金流量净额、购建固定资产、无形资产和其他长期资产支付的现金"
+        }
+      ]
     },
     {
       "job_id": "2025q1_advanced_inputs",
+      "request_version": 1,
       "universe_id": "cn_sh_sz_main_board_a",
       "period_end": "2025-03-31",
       "purpose": "quarterly_comparable_and_advanced_inputs",
@@ -33,6 +52,7 @@
     },
     {
       "job_id": "2026q1_advanced_supplement",
+      "request_version": 1,
       "universe_id": "cn_sh_sz_main_board_a",
       "period_end": "2026-03-31",
       "purpose": "quarterly_current_advanced_inputs",

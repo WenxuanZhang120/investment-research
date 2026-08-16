@@ -14,9 +14,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from scripts.public_payload_safety import assert_public_payload_safe
+
+
 SCHEMA_VERSION = 1
 PROJECT_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
-DEFAULT_RAW_ROOT = Path(__file__).resolve().parents[1] / "data" / "raw"
+DEFAULT_RAW_ROOT = REPOSITORY_ROOT / "data" / "raw"
 SOURCE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 
 
@@ -77,6 +83,8 @@ def save_raw_response(
     collection_method: Optional[str] = None,
     collector_name: Optional[str] = None,
     collection_scope: Optional[Dict[str, Any]] = None,
+    collection_job: Optional[Dict[str, Any]] = None,
+    collection_request: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Save a raw response envelope and return its path.
 
@@ -114,6 +122,14 @@ def save_raw_response(
         if not isinstance(collection_scope, dict):
             raise ValueError("collection_scope must be an object when supplied")
         _canonical_payload(collection_scope)
+    for label, value in (
+        ("collection_job", collection_job),
+        ("collection_request", collection_request),
+    ):
+        if value is not None:
+            if not isinstance(value, dict):
+                raise ValueError(f"{label} must be an object when supplied")
+            _canonical_payload(value)
 
     timestamp = fetched_at or datetime.now(PROJECT_TIMEZONE)
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
@@ -126,6 +142,12 @@ def save_raw_response(
     identity_parts = [normalized_source, query, fetched_at_text, payload_sha256]
     if collection_scope is not None:
         identity_parts.append(hashlib.sha256(_canonical_payload(collection_scope)).hexdigest())
+    if collection_job is not None:
+        identity_parts.append(hashlib.sha256(_canonical_payload(collection_job)).hexdigest())
+    if collection_request is not None:
+        identity_parts.append(
+            hashlib.sha256(_canonical_payload(collection_request)).hexdigest()
+        )
     identity = "\0".join(identity_parts).encode("utf-8")
     record_id = hashlib.sha256(identity).hexdigest()[:20]
 
@@ -147,7 +169,15 @@ def save_raw_response(
         metadata["collector_name"] = collector_name
     if collection_scope is not None:
         metadata["collection_scope"] = collection_scope
+    if collection_job is not None:
+        metadata["collection_job"] = collection_job
+    if collection_request is not None:
+        metadata["collection_request"] = collection_request
     envelope = {"metadata": metadata, "payload": payload}
+
+    # Raw is immutable once written, so the privacy gate must run before the
+    # destination directory, snapshot, or query-log entry is created.
+    assert_public_payload_safe(envelope)
 
     root = Path(raw_root)
     date_parts = (

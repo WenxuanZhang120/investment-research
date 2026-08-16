@@ -171,6 +171,79 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
                 [snapshots[0]], repository_root=self.root
             )
 
+    def test_prefers_audited_request_pagination_when_payload_omits_it(self) -> None:
+        document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        document["payload"].pop("page", None)
+        document["payload"].pop("limit", None)
+        document["metadata"]["collection_job"] = {
+            "collection_job_schema_version": 1,
+            "job_id": "2025fy_test",
+            "request_version": 2,
+            "expected_period_end": "2025-12-31",
+            "query_sha256": "a" * 64,
+        }
+        document["metadata"]["collection_request"] = {
+            "request_schema_version": 1,
+            "page": 1,
+            "limit": 100,
+        }
+        document["metadata"]["payload_sha256"] = hashlib.sha256(
+            canonical_payload(document["payload"])
+        ).hexdigest()
+        snapshot = self.root / "metadata-pagination.json"
+        snapshot.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+
+        built = build_financial_tables(snapshot, repository_root=self.root)
+
+        self.assertEqual(built["page"], 1)
+        self.assertEqual(built["limit"], 100)
+
+    def test_rejects_conflicting_request_and_payload_pagination(self) -> None:
+        document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        document["metadata"]["collection_request"] = {
+            "request_schema_version": 1,
+            "page": 1,
+            "limit": 99,
+        }
+        snapshot = self.root / "conflicting-pagination.json"
+        snapshot.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            FinancialNormalizationError, "conflicts with raw response limit"
+        ):
+            build_financial_tables(snapshot, repository_root=self.root)
+
+    def test_rejects_collection_job_period_mismatch_without_remapping(self) -> None:
+        document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        document["metadata"]["collection_job"] = {
+            "collection_job_schema_version": 1,
+            "job_id": "2024fy_test",
+            "request_version": 1,
+            "expected_period_end": "2024-12-31",
+            "query_sha256": "a" * 64,
+        }
+        snapshot = self.root / "wrong-job-period.json"
+        snapshot.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            FinancialNormalizationError, "does not match collection job"
+        ):
+            build_financial_tables(snapshot, repository_root=self.root)
+
+    def test_rejects_explicit_provider_failure(self) -> None:
+        document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        document["payload"]["status_code"] = 1
+        document["metadata"]["payload_sha256"] = hashlib.sha256(
+            canonical_payload(document["payload"])
+        ).hexdigest()
+        snapshot = self.root / "provider-failure.json"
+        snapshot.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            FinancialNormalizationError, "failed status_code"
+        ):
+            build_financial_tables(snapshot, repository_root=self.root)
+
     def test_writes_atomic_bundle_and_refuses_overwrite(self) -> None:
         destination = normalize_financial_snapshots(
             [ANNUAL_SNAPSHOT, Q1_SNAPSHOT],
@@ -182,7 +255,7 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
         )
         self.assertEqual(manifest["normalizer_version"], "1.3.0")
         self.assertEqual(manifest["bundle_schema_version"], 2)
-        self.assertEqual(manifest["mapping_version"], "3.2.0")
+        self.assertEqual(manifest["mapping_version"], "3.4.0")
         self.assertEqual(
             manifest["tables"]["financial_reports"]["record_count"],
             6,
@@ -257,6 +330,28 @@ class NormalizeIwencaiFinancialsTests(unittest.TestCase):
                 for report in built["tables"]["financial_reports"]
             )
         )
+
+    def test_rejects_duplicate_code_across_report_and_missing_report_rows(self) -> None:
+        document = json.loads(ANNUAL_SNAPSHOT.read_text(encoding="utf-8"))
+        missing_row = document["payload"]["datas"][0]
+        report_row = document["payload"]["datas"][1]
+        for key in list(missing_row):
+            if "[20251231]" in key:
+                del missing_row[key]
+        missing_row["股票代码"] = report_row["股票代码"]
+        document["metadata"]["payload_sha256"] = hashlib.sha256(
+            canonical_payload(document["payload"])
+        ).hexdigest()
+        snapshot = self.root / "duplicate-report-status.json"
+        snapshot.write_text(
+            json.dumps(document, ensure_ascii=False), encoding="utf-8"
+        )
+
+        with self.assertRaisesRegex(
+            FinancialNormalizationError,
+            "duplicate source security codes",
+        ):
+            build_financial_batch([snapshot], repository_root=self.root)
 
 
 if __name__ == "__main__":

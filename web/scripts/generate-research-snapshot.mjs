@@ -223,6 +223,10 @@ const coverage = {
   reportCount: content.filter((item) => item.type === "report").length,
   institutionalResearchCount: 0,
 };
+const latestFinancialPeriodEnd = Object.values(financials)
+  .flatMap((periods) => periods.map((period) => period.periodEnd))
+  .sort()
+  .at(-1) ?? "—";
 
 const snapshot = {
   schemaVersion: "1.0.0", generatedAt: new Date().toISOString(), asOfDate: "2026-08-07",
@@ -230,7 +234,13 @@ const snapshot = {
   sources: [
     { label: "全市场筛选", path: screeningSourceFile, asOfDate: "2026-08-07", records: securities.length, status: "ready" },
     { label: "收盘行情", path: "data/normalized/runs/**/market_bars_daily.jsonl", asOfDate: "2026-08-07", records: coverage.quoteCount, status: "partial" },
-    { label: "财务与财报", path: "data/normalized + data/derived/financial_metrics", asOfDate: "2026-03-31", records: coverage.financialSecurityCount, status: "ready" },
+    {
+      label: "财务与财报",
+      path: "data/normalized + data/derived/financial_metrics",
+      asOfDate: latestFinancialPeriodEnd,
+      records: coverage.financialSecurityCount,
+      status: coverage.financialSecurityCount > 0 ? "ready" : "missing",
+    },
     { label: "新闻与公告", path: "data/normalized/runs/**/{news_items,events}.jsonl", asOfDate: "2026-08-09", records: coverage.newsCount + coverage.announcementCount, status: "partial" },
     { label: "日报与内部研究", path: "reports/daily/**/*.md", asOfDate: "2026-08-09", records: coverage.dailyCount + coverage.reportCount, status: "ready" },
     { label: "机构研究报告", path: "尚未入库", asOfDate: "—", records: 0, status: "missing" },

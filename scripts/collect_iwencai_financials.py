@@ -20,9 +20,11 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from scripts.save_raw_response import DEFAULT_RAW_ROOT, save_raw_response  # noqa: E402
+from scripts.normalize_iwencai_financials import financial_period_evidence  # noqa: E402
+from scripts.public_payload_safety import PublicPayloadSafetyError  # noqa: E402
 
 
-COLLECTOR_VERSION = "1.2.0"
+COLLECTOR_VERSION = "1.3.0"
 API_URL = "https://openapi.iwencai.com/v1/query2data"
 SKILL_ID = "hithink-finance-query"
 SKILL_VERSION = "1.0.0"
@@ -102,9 +104,6 @@ def _request_page(
         raise CollectionError("iWencai returned a non-JSON response") from error
     if not isinstance(parsed, dict):
         raise CollectionError("iWencai response root must be an object")
-    parsed = dict(parsed)
-    parsed.pop("claw_headers", None)
-    parsed["trace_id"] = trace_id
     return parsed
 
 
@@ -135,6 +134,13 @@ def _safe_response_payload(
     page: int,
     limit: int,
 ) -> Dict[str, Any]:
+    if response.get("success") is False:
+        raise CollectionError("iWencai response explicitly reported success=false")
+    status_code = response.get("status_code")
+    if status_code is not None and status_code != 0:
+        raise CollectionError(
+            f"iWencai response explicitly reported status_code={status_code}"
+        )
     datas = response.get("datas")
     if not isinstance(datas, list):
         raise CollectionError("iWencai response does not contain a datas array")
@@ -144,23 +150,51 @@ def _safe_response_payload(
         raise CollectionError("iWencai code_count must be an integer") from error
     if code_count < 0:
         raise CollectionError("iWencai code_count cannot be negative")
+    if "claw_headers" in response:
+        raise CollectionError(
+            "iWencai response unexpectedly contains credential-bearing claw_headers"
+        )
 
-    payload = dict(response)
-    payload.pop("claw_headers", None)
-    payload.update(
-        {
-            "success": True,
-            "query": query,
-            "code_count": code_count,
-            "returned_count": len(datas),
-            "page": str(page),
-            "limit": str(limit),
-            "has_more": page * limit < code_count,
-            "datas": datas,
-            "collector_version": COLLECTOR_VERSION,
-        }
-    )
-    return payload
+    # Request pagination is provenance, not part of the provider response.
+    # Preserve the provider response exactly and persist page/limit in metadata.
+    return response
+
+
+def _response_field_names(response: Dict[str, Any]) -> List[str]:
+    fields = set()
+    columns = response.get("columns")
+    if isinstance(columns, list):
+        for column in columns:
+            if isinstance(column, dict):
+                name = column.get("key") or column.get("index_name")
+                if isinstance(name, str) and name:
+                    fields.add(name)
+    rows = response.get("datas")
+    if isinstance(rows, list):
+        for row in rows:
+            if isinstance(row, dict):
+                fields.update(name for name in row if isinstance(name, str) and name)
+    return sorted(fields)
+
+
+def _validate_collection_period(
+    response: Dict[str, Any], collection_job: Optional[Dict[str, Any]]
+) -> None:
+    if collection_job is None:
+        return
+    expected_period = collection_job.get("expected_period_end")
+    evidence = financial_period_evidence(_response_field_names(response))
+    expected_only = [expected_period]
+    for name in (
+        "financial_periods",
+        "report_period_label_periods",
+        "filing_date_periods",
+    ):
+        if evidence[name] != expected_only:
+            raise CollectionError(
+                "iWencai financial period contract mismatch after Raw save: "
+                f"{name} expected {expected_only}, found {evidence[name]}"
+            )
 
 
 def collect_query(
@@ -173,6 +207,7 @@ def collect_query(
     timeout: int = DEFAULT_TIMEOUT,
     raw_root: Path = DEFAULT_RAW_ROOT,
     request_page: Callable[..., Dict[str, Any]] = _request_page,
+    collection_job: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Collect a complete query or a validated continuation page segment."""
     if not isinstance(query, str) or not query.strip():
@@ -208,21 +243,35 @@ def collect_query(
             api_key=api_key,
             timeout=timeout,
         )
+        if "claw_headers" in response:
+            raise CollectionError(
+                "iWencai response unexpectedly contains credential-bearing claw_headers"
+            )
+        try:
+            snapshot_path = save_raw_response(
+                response,
+                source="iwencai",
+                query=query,
+                raw_root=raw_root,
+                collection_job=collection_job,
+                collection_request={
+                    "request_schema_version": 1,
+                    "page": page,
+                    "limit": limit,
+                },
+            )
+        except PublicPayloadSafetyError as error:
+            raise CollectionError(str(error)) from error
+        snapshot_paths.append(snapshot_path)
         payload = _safe_response_payload(
             response,
             query=query,
             page=page,
             limit=limit,
         )
-        snapshot_path = save_raw_response(
-            payload,
-            source="iwencai",
-            query=query,
-            raw_root=raw_root,
-        )
-        snapshot_paths.append(snapshot_path)
+        _validate_collection_period(payload, collection_job)
 
-        total = payload["code_count"]
+        total = int(payload["code_count"])
         rows = payload["datas"]
         if expected_total is None:
             expected_total = total
@@ -258,7 +307,7 @@ def collect_query(
             file=sys.stderr,
             flush=True,
         )
-        if not payload["has_more"]:
+        if page * limit >= total:
             reached_query_end = True
             break
     if not reached_query_end and not (

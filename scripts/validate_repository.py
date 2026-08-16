@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import fnmatch
 import hashlib
 import json
@@ -22,6 +23,10 @@ from scripts.investment_universe import (  # noqa: E402
     InvestmentUniverseError,
     load_investment_universe,
 )
+from scripts.public_payload_safety import (  # noqa: E402
+    PublicPayloadSafetyError,
+    assert_public_payload_safe,
+)
 
 
 GITHUB_FILE_LIMIT = 100 * 1024 * 1024
@@ -34,6 +39,7 @@ PUBLIC_ARTIFACT_SUFFIXES = {
     ".yaml",
     ".yml",
 }
+STRUCTURED_PUBLIC_PAYLOAD_SUFFIXES = {".csv", ".json", ".jsonl"}
 LOCAL_PATH_PATTERNS = (
     ("macOS user path", re.compile(rb"(?<![A-Za-z0-9])/Users/")),
     ("Linux home path", re.compile(rb"(?<![A-Za-z0-9])/home/")),
@@ -347,27 +353,99 @@ def _validate_collection_scope(root: Path, errors: List[str]) -> None:
         errors.append(f"collection scope configuration is invalid ({error})")
 
 
-def _validate_file_sizes(root: Path, errors: List[str]) -> None:
-    for path in root.rglob("*"):
-        if not path.is_file() or ".git" in path.parts or "private" in path.parts:
-            continue
-        if path.stat().st_size >= GITHUB_FILE_LIMIT:
-            errors.append(
-                f"{_label(root, path)}: exceeds GitHub 100 MiB file limit"
-            )
-
-
-def _git_tracked_paths(root: Path) -> List[Path]:
-    result = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z", "--cached"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+def _git_publish_candidate_paths(root: Path, errors: List[str]) -> List[Path]:
+    """Return tracked and non-ignored untracked files Git may publish."""
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "ls-files",
+                "-z",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except OSError:
+        errors.append("cannot enumerate Git publish candidates")
+        return []
     if result.returncode != 0:
+        errors.append("cannot enumerate Git publish candidates")
         return []
     names = result.stdout.decode("utf-8", errors="surrogateescape").split("\0")
     return [Path(name) for name in names if name]
+
+
+def _validate_file_sizes(
+    root: Path,
+    publish_candidate_paths: Sequence[Path],
+    errors: List[str],
+) -> None:
+    for relative_path in publish_candidate_paths:
+        path = root / relative_path
+        try:
+            if not path.is_file() or path.stat().st_size < GITHUB_FILE_LIMIT:
+                continue
+        except OSError as error:
+            errors.append(
+                f"{relative_path.as_posix()}: cannot inspect file size ({error})"
+            )
+            continue
+        errors.append(
+            f"{relative_path.as_posix()}: exceeds GitHub 100 MiB file limit"
+        )
+
+
+def _validate_publish_candidate_payload_safety(
+    root: Path,
+    publish_candidate_paths: Sequence[Path],
+    errors: List[str],
+) -> None:
+    """Apply the shared privacy rule to every structured Git candidate."""
+    for relative_path in publish_candidate_paths:
+        if relative_path.suffix.lower() not in STRUCTURED_PUBLIC_PAYLOAD_SUFFIXES:
+            continue
+        path = root / relative_path
+        if not path.is_file():
+            continue
+        public_name = relative_path.as_posix()
+        try:
+            if relative_path.suffix.lower() == ".json":
+                with path.open("r", encoding="utf-8") as handle:
+                    assert_public_payload_safe(json.load(handle))
+            elif relative_path.suffix.lower() == ".jsonl":
+                with path.open("r", encoding="utf-8") as handle:
+                    for line_number, line in enumerate(handle, start=1):
+                        if not line.strip():
+                            continue
+                        try:
+                            assert_public_payload_safe(json.loads(line))
+                        except PublicPayloadSafetyError as error:
+                            errors.append(
+                                f"{public_name}:{line_number}: {error}"
+                            )
+                            break
+            else:
+                with path.open("r", encoding="utf-8-sig", newline="") as handle:
+                    reader = csv.DictReader(handle)
+                    if reader.fieldnames is not None:
+                        assert_public_payload_safe(
+                            {field_name: None for field_name in reader.fieldnames}
+                        )
+                    for row in reader:
+                        assert_public_payload_safe(row)
+        except PublicPayloadSafetyError as error:
+            errors.append(f"{public_name}: {error}")
+        except (OSError, UnicodeError, csv.Error, json.JSONDecodeError) as error:
+            errors.append(
+                f"{public_name}: cannot inspect structured public payload "
+                f"({type(error).__name__})"
+            )
 
 
 def _is_public_artifact(path: Path) -> bool:
@@ -435,9 +513,13 @@ def validate_repository(
     _validate_github_connector_exports(root, errors)
     _validate_json_documents(root, errors)
     _validate_collection_scope(root, errors)
-    _validate_file_sizes(root, errors)
+    publish_candidate_paths = _git_publish_candidate_paths(root, errors)
+    _validate_file_sizes(root, publish_candidate_paths, errors)
+    _validate_publish_candidate_payload_safety(
+        root, publish_candidate_paths, errors
+    )
     if tracked_paths is None:
-        tracked_paths = _git_tracked_paths(root)
+        tracked_paths = publish_candidate_paths
     _validate_tracked_privacy(root, tracked_paths, errors)
     return errors
 

@@ -39,6 +39,7 @@ class NormalizeIwencaiEtfTests(unittest.TestCase):
             "page": 1,
             "limit": 100,
             "code_count": 2,
+            "has_more": False,
             "datas": [
                 {
                     "ETF代码": "513100.SH",
@@ -80,21 +81,23 @@ class NormalizeIwencaiEtfTests(unittest.TestCase):
         }
         self.write_snapshot(self.payload)
 
-    def write_snapshot(self, payload):
+    def write_snapshot(self, payload, *, path=None, record_id="dummy-etf-record"):
+        destination = path or self.snapshot
         envelope = {
             "metadata": {
                 "source": "iwencai",
                 "query": "境内纳指与标普ETF测试",
                 "fetched_at": "2026-08-09T19:00:00+08:00",
                 "as_of_date": "2026-08-09",
-                "record_id": "dummy-etf-record",
+                "record_id": record_id,
                 "payload_sha256": hashlib.sha256(canonical(payload)).hexdigest(),
             },
             "payload": payload,
         }
-        self.snapshot.write_text(
+        destination.write_text(
             json.dumps(envelope, ensure_ascii=False), encoding="utf-8"
         )
+        return destination
 
     def test_serializes_configured_etfs_with_raw_field_lineage(self):
         built = build_etf_batch([self.snapshot], repository_root=self.root)
@@ -111,6 +114,8 @@ class NormalizeIwencaiEtfTests(unittest.TestCase):
             built["records"][0]["field_lineage"]["etf_code"]["raw_field_name"],
             "ETF代码",
         )
+        self.assertEqual(built["records"][0]["normalizer_version"], "1.1.0")
+        self.assertEqual(built["records"][0]["mapping_version"], "1.1.0")
         destination = write_etf_bundle(
             built, normalized_root=self.root / "data/normalized"
         )
@@ -126,6 +131,114 @@ class NormalizeIwencaiEtfTests(unittest.TestCase):
         self.write_snapshot(payload)
         with self.assertRaisesRegex(EtfNormalizationError, "outside configured scope"):
             build_etf_tables(self.snapshot, repository_root=self.root)
+
+    def test_accepts_observed_aliases_and_deduplicates_fund_type_list(self):
+        payload = json.loads(json.dumps(self.payload, ensure_ascii=False))
+        replacements = {
+            "最新价": "最新收盘价",
+            "溢价率": "折溢价[20260809]",
+        }
+        for row in payload["datas"]:
+            for old_name, new_name in replacements.items():
+                row[new_name] = row.pop(old_name)
+            row["基金类型"] = ["ETF", "跨境ETF", "ETF", " "]
+            row["募集状态"] = row.pop("上市状态")
+        self.write_snapshot(payload)
+
+        built = build_etf_batch([self.snapshot], repository_root=self.root)
+
+        first = built["records"][0]
+        self.assertEqual(first["fund_type"], "ETF")
+        self.assertEqual(first["fund_type_memberships"], ["ETF", "跨境ETF"])
+        self.assertIsNone(first["listing_status"])
+        self.assertNotIn("listing_status", first["field_lineage"])
+        self.assertEqual(
+            first["field_lineage"]["etf_price"]["raw_field_name"],
+            "最新收盘价",
+        )
+        self.assertEqual(
+            first["field_lineage"]["premium_discount_rate"]["raw_field_name"],
+            "折溢价[20260809]",
+        )
+        self.assertIn("募集状态", built["unmapped_fields"])
+        self.assertEqual(
+            first["derived_lineage"]["fund_type"]["required_fund_type"],
+            "ETF",
+        )
+
+    def test_rejects_non_string_fund_type_list_items(self):
+        payload = json.loads(json.dumps(self.payload, ensure_ascii=False))
+        payload["datas"][0]["基金类型"] = ["ETF", 1]
+        self.write_snapshot(payload)
+
+        with self.assertRaisesRegex(EtfNormalizationError, "only strings"):
+            build_etf_tables(self.snapshot, repository_root=self.root)
+
+    def test_rejects_etf_batch_without_complete_pagination_metadata(self):
+        payload = json.loads(json.dumps(self.payload, ensure_ascii=False))
+        del payload["code_count"]
+        self.write_snapshot(payload)
+
+        with self.assertRaisesRegex(
+            EtfNormalizationError,
+            "requires page, limit, and reported total metadata",
+        ):
+            build_etf_batch([self.snapshot], repository_root=self.root)
+
+    def test_rejects_etf_batch_with_missing_final_page(self):
+        payload = json.loads(json.dumps(self.payload, ensure_ascii=False))
+        payload["code_count"] = 102
+        self.write_snapshot(payload)
+
+        with self.assertRaisesRegex(
+            EtfNormalizationError,
+            "pages must be complete and sequential",
+        ):
+            build_etf_batch([self.snapshot], repository_root=self.root)
+
+    def test_rejects_etf_has_more_that_conflicts_with_final_page(self):
+        payload = json.loads(json.dumps(self.payload, ensure_ascii=False))
+        payload["has_more"] = True
+        self.write_snapshot(payload)
+
+        with self.assertRaisesRegex(
+            EtfNormalizationError,
+            "has_more conflicts with pagination",
+        ):
+            build_etf_batch([self.snapshot], repository_root=self.root)
+
+    def test_accepts_complete_pages_with_variable_returned_row_counts(self):
+        rows = json.loads(json.dumps(self.payload["datas"], ensure_ascii=False))
+        third = json.loads(json.dumps(rows[0], ensure_ascii=False))
+        third["ETF代码"] = "513500.SH"
+        third["ETF简称"] = "标普500ETF"
+        third["跟踪指数"] = "标普500指数"
+        rows.append(third)
+
+        first_payload = json.loads(json.dumps(self.payload, ensure_ascii=False))
+        first_payload.update(
+            {"page": 1, "limit": 2, "code_count": 3, "has_more": True}
+        )
+        first_payload["datas"] = rows[:1]
+        second_payload = json.loads(json.dumps(self.payload, ensure_ascii=False))
+        second_payload.update(
+            {"page": 2, "limit": 2, "code_count": 3, "has_more": False}
+        )
+        second_payload["datas"] = rows[1:]
+        second_snapshot = self.root / "data/raw/iwencai/2026/08/09/etf-page-2.json"
+        self.write_snapshot(first_payload)
+        self.write_snapshot(
+            second_payload,
+            path=second_snapshot,
+            record_id="dummy-etf-record-page-2",
+        )
+
+        built = build_etf_batch(
+            [self.snapshot, second_snapshot], repository_root=self.root
+        )
+
+        self.assertEqual(built["coverage"]["page_count"], 2)
+        self.assertEqual(built["coverage"]["etf_count"], 3)
 
     def test_rejects_tampered_raw_snapshot(self):
         envelope = json.loads(self.snapshot.read_text(encoding="utf-8"))

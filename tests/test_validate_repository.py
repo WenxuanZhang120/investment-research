@@ -1,5 +1,6 @@
 import hashlib
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -9,23 +10,115 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from scripts.validate_repository import validate_repository  # noqa: E402
+from scripts.validate_repository import (  # noqa: E402
+    GITHUB_FILE_LIMIT,
+    validate_repository,
+)
 
 
 class ValidateRepositoryTests(unittest.TestCase):
     @staticmethod
     def empty_repository(root):
+        subprocess.run(
+            ["git", "init", "--quiet", str(root)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         (root / "data/raw/_query_log").mkdir(parents=True)
         (root / "data/normalized").mkdir(parents=True)
         (root / "data/derived").mkdir(parents=True)
         (root / "config").mkdir()
 
-    def test_current_repository_integrity(self):
-        self.assertEqual(validate_repository(REPOSITORY_ROOT), [])
+    @staticmethod
+    def write_file_at_github_limit(path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("wb") as handle:
+            handle.truncate(GITHUB_FILE_LIMIT)
+
+    def test_empty_temporary_repository_integrity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            self.assertEqual(validate_repository(root), [])
+
+    def test_file_size_check_fails_closed_outside_git_repository(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "data/raw/_query_log").mkdir(parents=True)
+            (root / "data/normalized").mkdir(parents=True)
+            (root / "data/derived").mkdir(parents=True)
+            (root / "config").mkdir()
+
+            self.assertIn(
+                "cannot enumerate Git publish candidates",
+                validate_repository(root),
+            )
+
+    def test_file_size_check_excludes_gitignored_caches(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            (root / ".gitignore").write_text(
+                "web/.next/\n.pnpm-store/\n",
+                encoding="utf-8",
+            )
+            self.write_file_at_github_limit(
+                root / "web/.next/cache/webpack/server-production/4.pack"
+            )
+            self.write_file_at_github_limit(root / ".pnpm-store/store.pack")
+
+            self.assertEqual(validate_repository(root), [])
+
+    def test_file_size_check_rejects_tracked_file_even_when_ignored(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            artifact = root / "tracked-large.bin"
+            artifact.write_bytes(b"tracked before ignore\n")
+            subprocess.run(
+                ["git", "-C", str(root), "add", artifact.name],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            (root / ".gitignore").write_text(
+                f"{artifact.name}\n",
+                encoding="utf-8",
+            )
+            self.write_file_at_github_limit(artifact)
+
+            errors = validate_repository(root)
+
+            self.assertTrue(
+                any(
+                    error.startswith(f"{artifact.name}:")
+                    and "exceeds GitHub 100 MiB file limit" in error
+                    for error in errors
+                )
+            )
+
+    def test_file_size_check_rejects_nonignored_untracked_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            artifact = root / "untracked-large.bin"
+            self.write_file_at_github_limit(artifact)
+
+            errors = validate_repository(root)
+
+            self.assertTrue(
+                any(
+                    error.startswith(f"{artifact.name}:")
+                    and "exceeds GitHub 100 MiB file limit" in error
+                    for error in errors
+                )
+            )
 
     def test_detects_tampered_raw_payload(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            self.empty_repository(root)
             path = root / "data/raw/iwencai/2026/08/08/snapshot.json"
             path.parent.mkdir(parents=True)
             path.write_text(
@@ -40,10 +133,6 @@ class ValidateRepositoryTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            (root / "data/raw/_query_log").mkdir(parents=True)
-            (root / "data/normalized").mkdir(parents=True)
-            (root / "data/derived").mkdir(parents=True)
-            (root / "config").mkdir()
             errors = validate_repository(root)
             self.assertTrue(any("payload hash mismatch" in error for error in errors))
 
@@ -137,6 +226,75 @@ class ValidateRepositoryTests(unittest.TestCase):
                         any("machine-local absolute path" in error for error in errors)
                     )
 
+    def test_detects_local_path_in_nonignored_untracked_public_artifact(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            artifact = root / "reports/daily/untracked-leak.json"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text(
+                json.dumps({"manifest": "/Users/example/private/manifest.json"}),
+                encoding="utf-8",
+            )
+
+            errors = validate_repository(root)
+
+            self.assertTrue(
+                any(
+                    error.startswith("reports/daily/untracked-leak.json:")
+                    and "machine-local absolute path" in error
+                    for error in errors
+                )
+            )
+
+    def test_ignores_local_path_in_gitignored_untracked_public_artifact(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            (root / ".gitignore").write_text(
+                "reports/daily/ignored-leak.json\n",
+                encoding="utf-8",
+            )
+            artifact = root / "reports/daily/ignored-leak.json"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text(
+                json.dumps({"manifest": "/Users/example/private/manifest.json"}),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(validate_repository(root), [])
+
+    def test_detects_local_path_in_tracked_artifact_even_when_ignored(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            artifact = root / "reports/daily/tracked-leak.json"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text(
+                json.dumps({"manifest": "/Users/example/private/manifest.json"}),
+                encoding="utf-8",
+            )
+            subprocess.run(
+                ["git", "-C", str(root), "add", artifact.relative_to(root).as_posix()],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            (root / ".gitignore").write_text(
+                "reports/daily/tracked-leak.json\n",
+                encoding="utf-8",
+            )
+
+            errors = validate_repository(root)
+
+            self.assertTrue(
+                any(
+                    error.startswith("reports/daily/tracked-leak.json:")
+                    and "machine-local absolute path" in error
+                    for error in errors
+                )
+            )
+
     def test_detects_tracked_private_paths_and_filenames(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -156,6 +314,141 @@ class ValidateRepositoryTests(unittest.TestCase):
             )
             self.assertTrue(any("portfolio/private/holdings.csv" in x for x in errors))
             self.assertTrue(any("something.private.json" in x for x in errors))
+
+    def test_detects_sensitive_key_in_nonignored_untracked_raw_json(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            payload = {"rows": [], "metadata": {"token": "test-only-marker"}}
+            digest = hashlib.sha256(
+                json.dumps(
+                    payload,
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()
+            artifact = (
+                root
+                / "data/raw/iwencai/2026/08/16/sensitive-snapshot.json"
+            )
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text(
+                json.dumps(
+                    {
+                        "metadata": {
+                            "record_id": "test-record",
+                            "payload_sha256": digest,
+                        },
+                        "payload": payload,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            errors = validate_repository(root)
+
+            self.assertTrue(
+                any(
+                    error.startswith(
+                        "data/raw/iwencai/2026/08/16/sensitive-snapshot.json:"
+                    )
+                    and "forbidden credential field" in error
+                    for error in errors
+                )
+            )
+
+    def test_detects_bearer_value_in_nonignored_untracked_jsonl(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            artifact = root / "reports/daily/sensitive.jsonl"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text(
+                json.dumps(
+                    {
+                        "diagnostic": "Bearer test_only_opaque_token_123456789"
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            errors = validate_repository(root)
+
+            self.assertTrue(
+                any(
+                    error.startswith("reports/daily/sensitive.jsonl:1:")
+                    and "Bearer credential value" in error
+                    for error in errors
+                )
+            )
+
+    def test_detects_sensitive_name_declared_in_raw_field_names(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            artifact = root / "reports/daily/schema-leak.json"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text(
+                json.dumps(
+                    {
+                        "raw_field_names": ["股票代码", "Authorization"],
+                        "payload": {},
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            errors = validate_repository(root)
+
+            self.assertTrue(
+                any(
+                    error.startswith("reports/daily/schema-leak.json:")
+                    and "declares a forbidden credential field" in error
+                    for error in errors
+                )
+            )
+
+    def test_detects_account_identifier_header_in_public_csv(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            artifact = root / "portfolio/public/holdings.csv"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text(
+                "account_id,security_code,quantity\nredacted,000001.SZ,10\n",
+                encoding="utf-8",
+            )
+
+            errors = validate_repository(root)
+
+            self.assertTrue(
+                any(
+                    error.startswith("portfolio/public/holdings.csv:")
+                    and "personal/account identifier field" in error
+                    for error in errors
+                )
+            )
+
+    def test_does_not_scan_gitignored_sensitive_structured_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.empty_repository(root)
+            (root / ".gitignore").write_text(
+                "reports/daily/ignored-sensitive.json\n",
+                encoding="utf-8",
+            )
+            artifact = root / "reports/daily/ignored-sensitive.json"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text(
+                json.dumps({"Authorization": "test-only-marker"}),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(validate_repository(root), [])
 
     def test_detects_collection_budget_above_safe_limit(self):
         with tempfile.TemporaryDirectory() as temporary:

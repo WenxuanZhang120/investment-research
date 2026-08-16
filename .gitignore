@@ -42,3 +42,9 @@ private/
 # Generated Python bytecode is local runtime noise, not research evidence.
 __pycache__/
 *.py[cod]
+
+# Local package-manager cache; dependencies can be reproduced from lockfiles.
+/.pnpm-store/
+
+# Finder metadata is machine-local and never part of research provenance.
+.DS_Store

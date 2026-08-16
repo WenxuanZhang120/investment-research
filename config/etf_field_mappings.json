@@ -1,5 +1,5 @@
 {
-  "mapping_version": "1.0.0",
+  "mapping_version": "1.1.0",
   "fields": [
     {
       "canonical_field_name": "etf_code",
@@ -35,7 +35,7 @@
       "canonical_field_name": "etf_price",
       "category": "etf_market",
       "unit": "CNY",
-      "raw_base_fields": ["最新价", "ETF最新价"]
+      "raw_base_fields": ["最新价", "ETF最新价", "最新收盘价"]
     },
     {
       "canonical_field_name": "change_pct",
@@ -71,7 +71,7 @@
       "canonical_field_name": "premium_discount_rate",
       "category": "etf_metric",
       "unit": "percent",
-      "raw_base_fields": ["溢价率", "折溢价率", "基金溢价率"]
+      "raw_base_fields": ["溢价率", "折溢价率", "基金溢价率", "折溢价"]
     },
     {
       "canonical_field_name": "management_fee_rate",
