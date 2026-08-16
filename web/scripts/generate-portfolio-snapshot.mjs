@@ -5,13 +5,14 @@ import { fileURLToPath } from "node:url";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(webRoot, "..");
-const portfolioRoot = path.join(repoRoot, "portfolio", "public");
+const portfolioRoot = path.join(repoRoot, "portfolio");
 const marketRoot = path.join(repoRoot, "data", "normalized", "runs");
 const outputFile = path.join(webRoot, "src", "generated", "portfolio-snapshot.json");
-const fixedBranch = "codex/github-connector-small-files";
+const buildBranch = "codex/github-connector-small-files";
+const dataBranch = "main";
 
-if (process.env.VERCEL_GIT_COMMIT_REF && process.env.VERCEL_GIT_COMMIT_REF !== fixedBranch) {
-  throw new Error(`Portfolio builds are restricted to the fixed GitHub branch: ${fixedBranch}`);
+if (process.env.VERCEL_GIT_COMMIT_REF && process.env.VERCEL_GIT_COMMIT_REF !== buildBranch) {
+  throw new Error(`Portfolio builds are restricted to the fixed GitHub branch: ${buildBranch}`);
 }
 
 function roundCurrency(value) {
@@ -132,10 +133,10 @@ const snapshot = {
   generatedAt: new Date().toISOString(),
   fixedGitHubSource: {
     repository: "WenxuanZhang120/investment-research",
-    branch: fixedBranch,
-    directory: "portfolio/public",
-    holdingsFile: "portfolio/public/holdings.csv",
-    executionFile: "portfolio/public/execution_status.json",
+    branch: dataBranch,
+    directory: "portfolio",
+    holdingsFile: "portfolio/holdings.csv",
+    executionFile: "portfolio/execution_status.json",
   },
   asOfDate: execution.as_of_date,
   source: execution.source,

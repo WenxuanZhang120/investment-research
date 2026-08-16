@@ -3,7 +3,7 @@
 个人使用的持仓与投资决策网站。首版包含：
 
 - GitHub OAuth 单用户白名单登录；
-- 从固定 GitHub 分支的 `portfolio/public` 读取持仓；
+- 从固定 GitHub 分支的 `portfolio` 根目录读取脱敏持仓；
 - 使用仓库内已有行情估算可覆盖标的的市值；
 - Neon Postgres 私有存储结构化决策日志；
 - 展示数据来源、日期、覆盖率和缺失项。
@@ -13,9 +13,9 @@
 ## 固定数据源
 
 - Repository: `WenxuanZhang120/investment-research`
-- Branch: `codex/github-connector-small-files`
-- Holdings: `portfolio/public/holdings.csv`
-- Execution status: `portfolio/public/execution_status.json`
+- Data branch: `main`
+- Holdings: `portfolio/holdings.csv`
+- Execution status: `portfolio/execution_status.json`
 
 生产构建如果不是来自上述固定分支，`data:sync` 会主动失败，避免误用其他分支的数据。
 

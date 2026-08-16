@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-08-10T06:23:37.949Z",
+  "generatedAt": "2026-08-16T13:17:26.698Z",
   "fixedGitHubSource": {
     "repository": "WenxuanZhang120/investment-research",
-    "branch": "codex/github-connector-small-files",
-    "directory": "portfolio/public",
-    "holdingsFile": "portfolio/public/holdings.csv",
-    "executionFile": "portfolio/public/execution_status.json"
+    "branch": "main",
+    "directory": "portfolio",
+    "holdingsFile": "portfolio/holdings.csv",
+    "executionFile": "portfolio/execution_status.json"
   },
   "asOfDate": "2026-08-10",
   "source": "user_reported",
   "positionCount": 3,
   "quoteCoverage": {
-    "available": 1,
+    "available": 0,
     "total": 3
   },
   "executedPrincipalBeforeFees": 2245.2,
@@ -28,12 +28,12 @@
       "costBasis": 750,
       "targetWeight": 0.098,
       "notes": "用户报告成交；已移除账户和订单标识；费用未知",
-      "latestPrice": 7.53,
-      "quoteDate": "2026-08-07",
-      "marketValue": 753,
-      "quoteSource": "iwencai",
-      "quoteSourceFile": "data/normalized/runs/iwencai/2026/08/08/39fd6c21403eedd2e816/market_bars_daily.jsonl",
-      "quoteStatus": "available"
+      "latestPrice": null,
+      "quoteDate": null,
+      "marketValue": null,
+      "quoteSource": null,
+      "quoteSourceFile": null,
+      "quoteStatus": "missing"
     },
     {
       "asOfDate": "2026-08-10",
