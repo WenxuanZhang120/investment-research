@@ -10,7 +10,7 @@ CONFIG = REPOSITORY_ROOT / "config/codex_daily_collection.json"
 class CodexDailyCollectionConfigTests(unittest.TestCase):
     def test_plan_is_chinese_friendly_and_preserves_boundaries(self):
         plan = json.loads(CONFIG.read_text(encoding="utf-8"))
-        self.assertEqual(plan["plan_version"], "1.1.0")
+        self.assertEqual(plan["plan_version"], "1.2.0")
         self.assertEqual(plan["collector"], "codex_agent")
         self.assertEqual(plan["tool_response_boundary"], "installed_skill_output")
         self.assertTrue(plan["display_name"].startswith("Codex 每日"))
@@ -46,6 +46,53 @@ class CodexDailyCollectionConfigTests(unittest.TestCase):
         self.assertTrue(market_query.startswith("{trade_date}沪深主板A股，"))
         self.assertNotIn("上市状态为正常上市、ST或*ST", market_query)
         self.assertNotIn("含ST和*ST", market_query)
+        market_contract = by_id["daily_a_share_market"]["response_contract"]
+        self.assertEqual(market_contract["contract_version"], 1)
+        self.assertTrue(market_contract["require_configured_query"])
+        self.assertEqual(
+            market_contract["ordered_pagination"],
+            {
+                "query_marker": "按股票代码升序排列",
+                "raw_code_fields": ["股票代码"],
+                "direction": "ascending",
+                "strict": True,
+                "validate_page_boundaries": True,
+            },
+        )
+        etf_query = by_id["nasdaq_sp500_etfs"]["query_template"]
+        self.assertEqual(
+            etf_query,
+            "{trade_date}纳斯达克100ETF或标普500ETF，查询ETF代码、ETF简称、"
+            "跟踪指数、基金类型、上市日期、上市状态、最新价、涨跌幅、成交量、"
+            "成交额、基金规模、单位净值、溢价率、管理费率、托管费率、跟踪误差，"
+            "按ETF代码升序排列",
+        )
+        self.assertNotIn("在上海或深圳交易所上市", etf_query)
+        self.assertTrue(by_id["nasdaq_sp500_etfs"]["complete_pagination_required"])
+        etf_contract = by_id["nasdaq_sp500_etfs"]["response_contract"]
+        self.assertTrue(etf_contract["require_configured_query"])
+        self.assertEqual(
+            etf_contract["ordered_pagination"]["raw_code_fields"],
+            ["ETF代码", "基金代码"],
+        )
+        self.assertEqual(
+            etf_contract["semantic_evidence"],
+            {
+                "field": "chunks_info",
+                "required_all_concept_groups": [
+                    ["纳斯达克100", "纳指100", "NASDAQ100"],
+                    ["标普500", "SP500", "S&P500"],
+                    ["ETF"],
+                ],
+                "forbidden_concepts": ["重仓概念"],
+            },
+        )
+        financial_contract = by_id["financial_plan_follow_up"]["response_contract"]
+        self.assertEqual(
+            financial_contract["ordered_pagination"]["query_marker"],
+            "按股票代码升序排列",
+        )
+        self.assertNotIn("require_configured_query", financial_contract)
         self.assertEqual(by_id["p0_company_news"]["scope_type"], "latest_p0")
         self.assertEqual(
             by_id["p0_repurchase_announcements"]["allowed_event_types"],

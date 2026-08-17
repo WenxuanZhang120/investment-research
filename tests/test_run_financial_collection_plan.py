@@ -278,6 +278,7 @@ class RunFinancialCollectionPlanTests(unittest.TestCase):
 
     def test_real_plan_has_unique_known_jobs(self):
         plan = load_plan(REPOSITORY_ROOT / "config/financial_collection_plan.json")
+        self.assertEqual(plan["plan_version"], "1.3.0")
         self.assertEqual(len(plan["jobs"]), 5)
         ids = {job["job_id"] for job in plan["jobs"]}
         self.assertIn("2026q1_base_resume", ids)
@@ -285,11 +286,17 @@ class RunFinancialCollectionPlanTests(unittest.TestCase):
             job for job in plan["jobs"]
             if job["job_id"] == "2025fy_advanced_supplement"
         )
-        self.assertEqual(current["request_version"], 3)
+        self.assertEqual(current["request_version"], 4)
         self.assertTrue(current["query"].startswith("全部沪深主板A股"))
         self.assertIn("查询2025年12月31日报告期的", current["query"])
-        self.assertEqual(len(current["historical_queries"]), 3)
-        self.assertEqual(current["historical_queries"][0]["request_version"], 2)
+        self.assertTrue(current["query"].endswith("，按股票代码升序排列"))
+        self.assertEqual(len(current["historical_queries"]), 4)
+        self.assertEqual(current["historical_queries"][0]["request_version"], 3)
+        self.assertEqual(
+            current["query"],
+            current["historical_queries"][0]["query"] + "，按股票代码升序排列",
+        )
+        self.assertEqual(current["historical_queries"][1]["request_version"], 2)
         universe = json.loads(
             (REPOSITORY_ROOT / "config/investment_universe.json").read_text(
                 encoding="utf-8"

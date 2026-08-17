@@ -758,15 +758,60 @@ def _discover_reports(repository_root: Path) -> Dict[str, Any]:
     }
 
 
-def _deduplicate_content(records: Iterable[Dict[str, Any]], id_field: str) -> List[Dict[str, Any]]:
+def _deduplicate_content(
+    records: Iterable[Dict[str, Any]],
+    id_field: str,
+    *,
+    mergeable_text_fields: Sequence[str] = (),
+) -> List[Dict[str, Any]]:
     by_id: Dict[str, Dict[str, Any]] = {}
+    missing = object()
     for record in records:
         identifier = record.get(id_field)
         if not isinstance(identifier, str) or not identifier.strip():
             raise ExportError("selected normalized content has a missing identifier")
         existing = by_id.get(identifier)
         if existing is not None and existing != record:
-            raise ExportError("selected normalized content has conflicting duplicate identifiers")
+            differing_fields = {
+                field
+                for field in set(existing) | set(record)
+                if existing.get(field, missing) != record.get(field, missing)
+            }
+            if not differing_fields.issubset(mergeable_text_fields):
+                fields = ", ".join(sorted(differing_fields))
+                raise ExportError(
+                    "selected normalized content has conflicting duplicate identifiers"
+                    f" (fields: {fields})"
+                )
+            merged = dict(existing)
+            for field in differing_fields:
+                values = []
+                field_is_present = False
+                for candidate in (existing, record):
+                    if field not in candidate:
+                        continue
+                    field_is_present = True
+                    value = candidate[field]
+                    if value is not None and not isinstance(value, str):
+                        raise ExportError(
+                            "selected normalized content has conflicting duplicate identifiers"
+                            f" (field {field} is not text)"
+                        )
+                    if isinstance(value, str):
+                        values.append(value)
+                if values:
+                    # Prefer the most complete source excerpt.  Equal-length
+                    # variants use lexical order so the result is independent
+                    # of manifest discovery order.
+                    merged[field] = min(
+                        set(values), key=lambda value: (-len(value), value)
+                    )
+                elif field_is_present:
+                    merged[field] = None
+                else:
+                    merged.pop(field, None)
+            by_id[identifier] = merged
+            continue
         by_id[identifier] = record
     result = list(by_id.values())
     result.sort(
@@ -1104,6 +1149,7 @@ def build_public_payloads(repository_root: Path) -> Tuple[Dict[str, Dict[str, An
             for record in normalized["news"]["records"].get("news_items", [])
         ),
         "newsId",
+        mergeable_text_fields=("summary",),
     )
     events = _deduplicate_content(
         (

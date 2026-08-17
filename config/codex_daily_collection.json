@@ -1,5 +1,5 @@
 {
-  "plan_version": "1.1.0",
+  "plan_version": "1.2.0",
   "display_name": "Codex 每日数据采集计划",
   "timezone": "Asia/Shanghai",
   "suggested_run_time": "19:00",
@@ -29,7 +29,18 @@
       "tool": "hithink-market-query",
       "frequency": "trading_day",
       "query_template": "{trade_date}沪深主板A股，排除创业板、科创板和北交所，查询股票代码、股票简称、股票市场类型、上市日期、上市状态、开盘价（不复权）、最高价（不复权）、最低价（不复权）、收盘价（不复权）、成交量、成交额、总市值、市盈率(pe,ttm)，按股票代码升序排列",
-      "complete_pagination_required": true
+      "complete_pagination_required": true,
+      "response_contract": {
+        "contract_version": 1,
+        "require_configured_query": true,
+        "ordered_pagination": {
+          "query_marker": "按股票代码升序排列",
+          "raw_code_fields": ["股票代码"],
+          "direction": "ascending",
+          "strict": true,
+          "validate_page_boundaries": true
+        }
+      }
     },
     {
       "task_id": "nasdaq_sp500_etfs",
@@ -37,9 +48,29 @@
       "dataset_kind": "etf",
       "tool": "hithink-etf-selector",
       "frequency": "trading_day",
-      "query_template": "{trade_date}在上海或深圳交易所上市、跟踪纳斯达克100指数或标普500指数的ETF，查询ETF代码、ETF简称、跟踪指数、基金类型、上市日期、上市状态、最新价、涨跌幅、成交量、成交额、基金规模、单位净值、溢价率、管理费率、托管费率、跟踪误差，按ETF代码升序排列",
+      "query_template": "{trade_date}纳斯达克100ETF或标普500ETF，查询ETF代码、ETF简称、跟踪指数、基金类型、上市日期、上市状态、最新价、涨跌幅、成交量、成交额、基金规模、单位净值、溢价率、管理费率、托管费率、跟踪误差，按ETF代码升序排列",
       "complete_pagination_required": true,
-      "separate_from_stock_financial_pipeline": true
+      "separate_from_stock_financial_pipeline": true,
+      "response_contract": {
+        "contract_version": 1,
+        "require_configured_query": true,
+        "ordered_pagination": {
+          "query_marker": "按ETF代码升序排列",
+          "raw_code_fields": ["ETF代码", "基金代码"],
+          "direction": "ascending",
+          "strict": true,
+          "validate_page_boundaries": true
+        },
+        "semantic_evidence": {
+          "field": "chunks_info",
+          "required_all_concept_groups": [
+            ["纳斯达克100", "纳指100", "NASDAQ100"],
+            ["标普500", "SP500", "S&P500"],
+            ["ETF"]
+          ],
+          "forbidden_concepts": ["重仓概念"]
+        }
+      }
     },
     {
       "task_id": "p0_repurchase_announcements",
@@ -112,7 +143,17 @@
       "tool": "hithink-finance-query",
       "frequency": "daily_if_incomplete",
       "query_source": "config/financial_collection_plan.json",
-      "complete_pagination_required": true
+      "complete_pagination_required": true,
+      "response_contract": {
+        "contract_version": 1,
+        "ordered_pagination": {
+          "query_marker": "按股票代码升序排列",
+          "raw_code_fields": ["股票代码"],
+          "direction": "ascending",
+          "strict": true,
+          "validate_page_boundaries": true
+        }
+      }
     }
   ]
 }
