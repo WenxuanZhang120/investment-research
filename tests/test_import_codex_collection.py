@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
+DAILY_COLLECTION_CONFIG = REPOSITORY_ROOT / "config/codex_daily_collection.json"
 
 from scripts.import_codex_collection import (  # noqa: E402
     CodexCollectionError,
@@ -24,6 +25,7 @@ class ImportCodexCollectionTests(unittest.TestCase):
         self.artifact_path = self.root / "agent-result.json"
         self.payload = {
             "success": True,
+            "query": "2026年8月8日A股测试查询",
             "datas": [
                 {
                     "股票代码": "000001.SZ",
@@ -63,6 +65,73 @@ class ImportCodexCollectionTests(unittest.TestCase):
         self.artifact_path.write_text(
             json.dumps(value, ensure_ascii=False), encoding="utf-8"
         )
+
+    def install_daily_collection_config(self):
+        config_root = self.root / "config"
+        config_root.mkdir(exist_ok=True)
+        (config_root / "codex_daily_collection.json").write_text(
+            DAILY_COLLECTION_CONFIG.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+
+    def ordered_market_artifact(self, pages):
+        plan = json.loads(DAILY_COLLECTION_CONFIG.read_text(encoding="utf-8"))
+        task = next(
+            item for item in plan["tasks"] if item["task_id"] == "daily_a_share_market"
+        )
+        artifact = self.artifact()
+        artifact["query"] = task["query_template"].replace(
+            "{trade_date}", artifact["as_of_date"]
+        )
+        total = sum(len(codes) for _, codes in pages)
+        artifact["responses"] = []
+        for offset, (page, codes) in enumerate(pages):
+            artifact["responses"].append(
+                {
+                    "fetched_at": f"2026-08-08T19:{offset:02d}:00+08:00",
+                    "raw_field_names": ["股票代码", "股票简称"],
+                    "raw_response": {
+                        "success": True,
+                        "query": artifact["query"],
+                        "page": str(page),
+                        "limit": "2",
+                        "code_count": total,
+                        "returned_count": len(codes),
+                        "has_more": page * 2 < total,
+                        "datas": [
+                            {"股票代码": code, "股票简称": "测试"}
+                            for code in codes
+                        ],
+                    },
+                }
+            )
+        return artifact
+
+    def production_etf_empty_artifact(self, chunks_info):
+        plan = json.loads(DAILY_COLLECTION_CONFIG.read_text(encoding="utf-8"))
+        task = next(
+            item for item in plan["tasks"] if item["task_id"] == "nasdaq_sp500_etfs"
+        )
+        artifact = self.artifact()
+        artifact["collection_id"] = "daily-etf-20260808"
+        artifact["dataset_kind"] = "etf"
+        artifact["collector"]["tool"] = "hithink-etf-selector"
+        artifact["query"] = task["query_template"].replace(
+            "{trade_date}", artifact["as_of_date"]
+        )
+        artifact["responses"][0]["raw_field_names"] = []
+        artifact["responses"][0]["raw_response"] = {
+            "success": True,
+            "query": artifact["query"],
+            "code_count": 0,
+            "returned_count": 0,
+            "page": "1",
+            "limit": "100",
+            "has_more": False,
+            "chunks_info": chunks_info,
+            "datas": [],
+        }
+        return artifact
 
     def test_import_preserves_raw_metadata_and_writes_chinese_audit(self):
         self.write_artifact(self.artifact())
@@ -267,6 +336,7 @@ class ImportCodexCollectionTests(unittest.TestCase):
                 )
                 artifact["responses"][0]["raw_response"] = {
                     "success": True,
+                    "query": artifact["query"],
                     "code_count": 0,
                     "returned_count": 0,
                     "page": "1",
@@ -286,6 +356,225 @@ class ImportCodexCollectionTests(unittest.TestCase):
                 self.assertEqual(result["processing_status"], "raw_only_requested")
                 self.assertEqual(len(result["raw_snapshots"]), 1)
                 self.assertEqual(result["normalized_outputs"], [])
+
+    def test_production_etf_empty_result_requires_matching_chunks_semantics(self):
+        self.install_daily_collection_config()
+        artifact = self.production_etf_empty_artifact(
+            json.dumps(
+                [
+                    "2026年8月8日纳斯达克100ETF或标普500ETF",
+                    "基金市场类型是ETF",
+                ],
+                ensure_ascii=False,
+            )
+        )
+        self.write_artifact(artifact)
+
+        result = import_collection(
+            self.artifact_path,
+            repository_root=self.root,
+            process=False,
+            dry_run=True,
+        )
+
+        self.assertTrue(result["dry_run"])
+        self.assertFalse((self.root / "data").exists())
+        self.assertFalse((self.root / "reports").exists())
+
+    def test_production_etf_zero_result_rejects_semantic_mismatch_before_raw(self):
+        self.install_daily_collection_config()
+        artifact = self.production_etf_empty_artifact(
+            json.dumps(
+                [
+                    "2026年6月30日的重仓概念是上海,深证a股",
+                    "跟踪指数包含纳斯达克100指数,标普500指数",
+                    "基金市场类型是ETF",
+                ],
+                ensure_ascii=False,
+            )
+        )
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_query_semantics_mismatch$"
+        ) as raised:
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+        self.assertNotIn("重仓", str(raised.exception))
+        self.assertFalse((self.root / "data").exists())
+        self.assertFalse((self.root / "reports").exists())
+
+    def test_production_etf_rejects_missing_semantic_evidence(self):
+        self.install_daily_collection_config()
+        artifact = self.production_etf_empty_artifact(None)
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_query_semantics_unverifiable$"
+        ):
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+    def test_order_gate_uses_real_page_numbers_not_response_array_order(self):
+        self.install_daily_collection_config()
+        artifact = self.ordered_market_artifact(
+            [
+                (2, ["000003.SZ", "000004.SZ"]),
+                (1, ["000001.SZ", "000002.SZ"]),
+            ]
+        )
+        self.write_artifact(artifact)
+
+        result = import_collection(
+            self.artifact_path,
+            repository_root=self.root,
+            process=False,
+            dry_run=True,
+        )
+
+        self.assertTrue(result["dry_run"])
+
+    def test_production_market_rejects_missing_raw_query(self):
+        self.install_daily_collection_config()
+        artifact = self.ordered_market_artifact([(1, ["000001.SZ"])])
+        del artifact["responses"][0]["raw_response"]["query"]
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_query_contract_mismatch$"
+        ):
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+    def test_production_market_rejects_mismatched_raw_query(self):
+        self.install_daily_collection_config()
+        artifact = self.ordered_market_artifact([(1, ["000001.SZ"])])
+        artifact["responses"][0]["raw_response"]["query"] = "different query"
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_query_contract_mismatch$"
+        ) as raised:
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+        self.assertNotIn("different", str(raised.exception))
+
+    def test_order_gate_rejects_missing_raw_page_with_request_metadata(self):
+        self.install_daily_collection_config()
+        artifact = self.ordered_market_artifact([(1, ["000001.SZ"])])
+        artifact["responses"][0]["collection_request"] = {
+            "request_schema_version": 1,
+            "page": 1,
+            "limit": 2,
+        }
+        del artifact["responses"][0]["raw_response"]["page"]
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_source_order_unverifiable$"
+        ):
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+    def test_order_gate_rejects_request_and_raw_page_mismatch(self):
+        self.install_daily_collection_config()
+        artifact = self.ordered_market_artifact([(1, ["000001.SZ"])])
+        artifact["responses"][0]["collection_request"] = {
+            "request_schema_version": 1,
+            "page": 2,
+            "limit": 2,
+        }
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_source_order_unverifiable$"
+        ):
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+    def test_order_gate_does_not_replace_downstream_page_completeness_gate(self):
+        self.install_daily_collection_config()
+        artifact = self.ordered_market_artifact(
+            [
+                (1, ["000001.SZ", "000002.SZ"]),
+                (3, ["000005.SZ", "000006.SZ"]),
+            ]
+        )
+        self.write_artifact(artifact)
+
+        result = import_collection(
+            self.artifact_path,
+            repository_root=self.root,
+            process=False,
+            dry_run=True,
+        )
+
+        self.assertTrue(result["dry_run"])
+
+    def test_order_gate_rejects_within_page_descending_codes_without_values(self):
+        self.install_daily_collection_config()
+        artifact = self.ordered_market_artifact(
+            [(1, ["000002.SZ", "000001.SZ"])]
+        )
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_source_order_violation$"
+        ) as raised:
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+        self.assertNotIn("000002", str(raised.exception))
+
+    def test_order_gate_rejects_cross_page_boundary_overlap(self):
+        self.install_daily_collection_config()
+        artifact = self.ordered_market_artifact(
+            [
+                (1, ["000001.SZ", "000004.SZ"]),
+                (2, ["000003.SZ", "000005.SZ"]),
+            ]
+        )
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_source_order_violation$"
+        ):
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
 
     def financial_artifact(self):
         snapshot = json.loads(
@@ -419,6 +708,7 @@ class ImportCodexCollectionTests(unittest.TestCase):
         artifact = self.financial_artifact()
         artifact["responses"][0]["raw_response"] = {
             "status_code": 0,
+            "query": artifact["query"],
             "code_count": 0,
             "datas": [],
         }
@@ -517,6 +807,84 @@ class ImportCodexCollectionTests(unittest.TestCase):
         with self.assertRaisesRegex(CodexCollectionError, "positive integer"):
             validate_collection_artifact(artifact)
 
+    def test_financial_query_with_order_marker_passes_when_source_is_ascending(self):
+        self.install_daily_collection_config()
+        artifact = self.financial_artifact()
+        artifact["query"] += "，按股票代码升序排列"
+        artifact["responses"][0]["raw_response"]["query"] = artifact["query"]
+        artifact["responses"][0]["raw_response"]["datas"].sort(
+            key=lambda row: row["股票代码"]
+        )
+        plan_path = self.root / "config/financial_collection_plan.json"
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        plan["jobs"][0]["query"] = artifact["query"]
+        plan_path.write_text(
+            json.dumps(plan, ensure_ascii=False), encoding="utf-8"
+        )
+        self.write_artifact(artifact)
+
+        result = import_collection(
+            self.artifact_path,
+            repository_root=self.root,
+            process=False,
+            dry_run=True,
+        )
+
+        self.assertEqual(
+            result["financial_assessment"]["status"], "ready_to_normalize"
+        )
+
+    def test_financial_order_marker_rejects_mismatched_raw_query(self):
+        self.install_daily_collection_config()
+        artifact = self.financial_artifact()
+        artifact["query"] += "，按股票代码升序排列"
+        artifact["responses"][0]["raw_response"]["datas"].sort(
+            key=lambda row: row["股票代码"]
+        )
+        plan_path = self.root / "config/financial_collection_plan.json"
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        plan["jobs"][0]["query"] = artifact["query"]
+        plan_path.write_text(
+            json.dumps(plan, ensure_ascii=False), encoding="utf-8"
+        )
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_query_contract_mismatch$"
+        ):
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+    def test_financial_query_with_order_marker_rejects_source_order_violation(self):
+        self.install_daily_collection_config()
+        artifact = self.financial_artifact()
+        artifact["query"] += "，按股票代码升序排列"
+        artifact["responses"][0]["raw_response"]["query"] = artifact["query"]
+        plan_path = self.root / "config/financial_collection_plan.json"
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        plan["jobs"][0]["query"] = artifact["query"]
+        plan_path.write_text(
+            json.dumps(plan, ensure_ascii=False), encoding="utf-8"
+        )
+        self.write_artifact(artifact)
+
+        with self.assertRaisesRegex(
+            CodexCollectionError, "^iwencai_source_order_violation$"
+        ) as raised:
+            import_collection(
+                self.artifact_path,
+                repository_root=self.root,
+                process=False,
+                dry_run=True,
+            )
+
+        self.assertNotIn("600519", str(raised.exception))
+        self.assertFalse((self.root / "data").exists())
+
     def test_etf_collection_uses_independent_raw_first_normalizer(self):
         artifact = self.artifact()
         artifact["collection_id"] = "daily-etf-20260809"
@@ -527,6 +895,7 @@ class ImportCodexCollectionTests(unittest.TestCase):
         artifact["responses"][0]["fetched_at"] = "2026-08-09T19:00:00+08:00"
         artifact["responses"][0]["raw_response"] = {
             "success": True,
+            "query": artifact["query"],
             "page": 1,
             "limit": 100,
             "code_count": 1,

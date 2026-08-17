@@ -60,6 +60,7 @@ SOURCE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 COLLECTION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 SECURITY_CODE_PATTERN = re.compile(r"^\d{6}\.(?:SH|SZ)$")
 DEFAULT_REPORTS_ROOT = REPOSITORY_ROOT / "reports" / "daily" / "codex-collection-runs"
+DAILY_COLLECTION_CONFIG = Path("config/codex_daily_collection.json")
 
 
 class CodexCollectionError(ValueError):
@@ -200,6 +201,257 @@ def _positive_int(value: Any, *, label: str) -> int:
     return value
 
 
+def _load_iwencai_response_contract(
+    *,
+    repository_root: Path,
+    dataset_kind: str,
+    collector_tool: str,
+) -> Optional[Dict[str, Any]]:
+    """Load the versioned response contract for one tabular daily task."""
+    if dataset_kind not in {"market", "etf", "financial"}:
+        return None
+    path = Path(repository_root) / DAILY_COLLECTION_CONFIG
+    if not path.is_file():
+        # Tests and portable one-off imports may use a minimal repository root.
+        # The canonical repository always carries this validated configuration.
+        return None
+    try:
+        plan = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise CodexCollectionError("iwencai_response_contract_invalid") from error
+    tasks = plan.get("tasks") if isinstance(plan, dict) else None
+    if not isinstance(tasks, list):
+        raise CodexCollectionError("iwencai_response_contract_invalid")
+    matches = [
+        task
+        for task in tasks
+        if isinstance(task, dict)
+        and task.get("dataset_kind") == dataset_kind
+        and task.get("tool") == collector_tool
+    ]
+    if len(matches) != 1:
+        raise CodexCollectionError("iwencai_response_contract_invalid")
+    contract = matches[0].get("response_contract")
+    if not isinstance(contract, dict) or contract.get("contract_version") != 1:
+        raise CodexCollectionError("iwencai_response_contract_invalid")
+    return {
+        "task": matches[0],
+        "contract": contract,
+    }
+
+
+def _semantic_strings(value: Any, *, depth: int = 0) -> List[str]:
+    if depth > 8:
+        return []
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return []
+        if stripped[:1] in {"[", "{", '"'}:
+            try:
+                decoded = json.loads(stripped)
+            except json.JSONDecodeError:
+                return [stripped]
+            if decoded != value:
+                return _semantic_strings(decoded, depth=depth + 1)
+        return [stripped]
+    if isinstance(value, list):
+        return [
+            item
+            for child in value
+            for item in _semantic_strings(child, depth=depth + 1)
+        ]
+    if isinstance(value, dict):
+        return [
+            item
+            for key, child in value.items()
+            for source in (key, child)
+            for item in _semantic_strings(source, depth=depth + 1)
+        ]
+    return []
+
+
+def _semantic_key(value: str) -> str:
+    return re.sub(r"[\W_]+", "", value.casefold(), flags=re.UNICODE)
+
+
+def _validate_semantic_evidence(
+    responses: Sequence[Dict[str, Any]], contract: Dict[str, Any]
+) -> None:
+    evidence_field = contract.get("field")
+    required_groups = contract.get("required_all_concept_groups")
+    forbidden = contract.get("forbidden_concepts")
+    if (
+        not isinstance(evidence_field, str)
+        or not evidence_field
+        or not isinstance(required_groups, list)
+        or not required_groups
+        or any(
+            not isinstance(group, list)
+            or not group
+            or any(not isinstance(item, str) or not item for item in group)
+            for group in required_groups
+        )
+        or not isinstance(forbidden, list)
+        or any(not isinstance(item, str) or not item for item in forbidden)
+    ):
+        raise CodexCollectionError("iwencai_response_contract_invalid")
+    normalized_groups = [
+        [_semantic_key(item) for item in group] for group in required_groups
+    ]
+    normalized_forbidden = [_semantic_key(item) for item in forbidden]
+    for response in responses:
+        raw_response = response["raw_response"]
+        evidence = _semantic_strings(raw_response.get(evidence_field))
+        if not evidence:
+            raise CodexCollectionError("iwencai_query_semantics_unverifiable")
+        normalized = _semantic_key(" ".join(evidence))
+        if any(item and item in normalized for item in normalized_forbidden) or any(
+            not any(alias and alias in normalized for alias in group)
+            for group in normalized_groups
+        ):
+            raise CodexCollectionError("iwencai_query_semantics_mismatch")
+
+
+def _response_page(response: Dict[str, Any]) -> int:
+    raw_response = response["raw_response"]
+    raw_value = raw_response.get("page")
+    if isinstance(raw_value, bool):
+        raw_page = None
+    elif isinstance(raw_value, int):
+        raw_page = raw_value if raw_value > 0 else None
+    elif isinstance(raw_value, str) and raw_value.isdigit():
+        parsed = int(raw_value)
+        raw_page = parsed if parsed > 0 else None
+    else:
+        raw_page = None
+    request = response.get("collection_request")
+    request_page = request.get("page") if isinstance(request, dict) else None
+    if raw_page is None:
+        raise CodexCollectionError("iwencai_source_order_unverifiable")
+    if request_page is not None and request_page != raw_page:
+        raise CodexCollectionError("iwencai_source_order_unverifiable")
+    return raw_page
+
+
+def _ordered_codes(
+    raw_response: Dict[str, Any], *, raw_code_fields: Sequence[str]
+) -> List[str]:
+    rows = raw_response.get("datas")
+    if not isinstance(rows, list):
+        raise CodexCollectionError("iwencai_source_order_unverifiable")
+    result: List[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise CodexCollectionError("iwencai_source_order_unverifiable")
+        values = {
+            value.strip().upper()
+            for field in raw_code_fields
+            for value in [row.get(field)]
+            if isinstance(value, str) and value.strip()
+        }
+        if len(values) != 1:
+            raise CodexCollectionError("iwencai_source_order_unverifiable")
+        code = next(iter(values))
+        if not SECURITY_CODE_PATTERN.fullmatch(code):
+            raise CodexCollectionError("iwencai_source_order_unverifiable")
+        result.append(code)
+    return result
+
+
+def _validate_source_order(
+    responses: Sequence[Dict[str, Any]],
+    *,
+    query: str,
+    contract: Dict[str, Any],
+) -> None:
+    query_marker = contract.get("query_marker")
+    raw_code_fields = contract.get("raw_code_fields")
+    if (
+        not isinstance(query_marker, str)
+        or not query_marker
+        or not isinstance(raw_code_fields, list)
+        or not raw_code_fields
+        or any(not isinstance(item, str) or not item for item in raw_code_fields)
+        or contract.get("direction") != "ascending"
+        or contract.get("strict") is not True
+        or contract.get("validate_page_boundaries") is not True
+    ):
+        raise CodexCollectionError("iwencai_response_contract_invalid")
+    if query_marker not in query:
+        return
+
+    pages: Dict[int, List[str]] = {}
+    for response in responses:
+        page = _response_page(response)
+        if page in pages:
+            raise CodexCollectionError("iwencai_source_order_unverifiable")
+        codes = _ordered_codes(
+            response["raw_response"], raw_code_fields=raw_code_fields
+        )
+        if any(left >= right for left, right in zip(codes, codes[1:])):
+            raise CodexCollectionError("iwencai_source_order_violation")
+        pages[page] = codes
+
+    ordered_pages = [pages[page] for page in sorted(pages)]
+    if len(ordered_pages) > 1 and any(not codes for codes in ordered_pages):
+        raise CodexCollectionError("iwencai_source_order_unverifiable")
+    if any(
+        left[-1] >= right[0]
+        for left, right in zip(ordered_pages, ordered_pages[1:])
+    ):
+        raise CodexCollectionError("iwencai_source_order_violation")
+
+
+def _validate_iwencai_response_contract(
+    *,
+    repository_root: Path,
+    dataset_kind: str,
+    source: str,
+    collector_tool: str,
+    query: str,
+    as_of_date: str,
+    responses: Sequence[Dict[str, Any]],
+) -> None:
+    if source != "iwencai":
+        return
+    if dataset_kind in {"market", "etf", "financial"}:
+        for response in responses:
+            response_query = response["raw_response"].get("query")
+            if (
+                not isinstance(response_query, str)
+                or not response_query
+                or response_query != query
+            ):
+                raise CodexCollectionError("iwencai_query_contract_mismatch")
+    loaded = _load_iwencai_response_contract(
+        repository_root=repository_root,
+        dataset_kind=dataset_kind,
+        collector_tool=collector_tool,
+    )
+    if loaded is None:
+        return
+    task = loaded["task"]
+    contract = loaded["contract"]
+    if contract.get("require_configured_query") is True:
+        query_template = task.get("query_template")
+        if (
+            not isinstance(query_template, str)
+            or query_template.replace("{trade_date}", as_of_date) != query
+        ):
+            raise CodexCollectionError("iwencai_query_contract_mismatch")
+    semantic_contract = contract.get("semantic_evidence")
+    if semantic_contract is not None:
+        if not isinstance(semantic_contract, dict):
+            raise CodexCollectionError("iwencai_response_contract_invalid")
+        _validate_semantic_evidence(responses, semantic_contract)
+    order_contract = contract.get("ordered_pagination")
+    if order_contract is not None:
+        if not isinstance(order_contract, dict):
+            raise CodexCollectionError("iwencai_response_contract_invalid")
+        _validate_source_order(responses, query=query, contract=order_contract)
+
+
 def _validate_collection_job(
     value: Any, *, dataset_kind: str, query: str
 ) -> Optional[Dict[str, Any]]:
@@ -332,7 +584,9 @@ def load_collection_artifact(path: Path) -> Dict[str, Any]:
     return document
 
 
-def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
+def validate_collection_artifact(
+    document: Dict[str, Any], *, repository_root: Path = REPOSITORY_ROOT
+) -> Dict[str, Any]:
     if document.get("schema_version") != ARTIFACT_SCHEMA_VERSION:
         raise CodexCollectionError(
             f"schema_version must be {ARTIFACT_SCHEMA_VERSION}"
@@ -426,6 +680,15 @@ def validate_collection_artifact(document: Dict[str, Any]) -> Dict[str, Any]:
                 "collection_request": collection_request,
             }
         )
+    _validate_iwencai_response_contract(
+        repository_root=Path(repository_root),
+        dataset_kind=dataset_kind,
+        source=source,
+        collector_tool=tool,
+        query=query,
+        as_of_date=as_of_date,
+        responses=normalized_responses,
+    )
     return {
         "schema_version": ARTIFACT_SCHEMA_VERSION,
         "collection_id": collection_id,
@@ -832,7 +1095,9 @@ def import_collection(
     )
     repository_relative_path(raw_root, repository_root=repository_root)
     repository_relative_path(reports_root, repository_root=repository_root)
-    collection = validate_collection_artifact(load_collection_artifact(artifact_path))
+    collection = validate_collection_artifact(
+        load_collection_artifact(artifact_path), repository_root=repository_root
+    )
     financial_assessment = _financial_collection_assessment(
         collection,
         repository_root=repository_root,

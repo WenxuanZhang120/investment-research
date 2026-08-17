@@ -844,6 +844,92 @@ class ExportPublicSiteTests(unittest.TestCase):
             content = json.loads((output / "content/index.json").read_text(encoding="utf-8"))
             self.assertEqual([item["newsId"] for item in content["news"]], ["news-a"])
 
+    def test_news_duplicate_summary_variants_are_merged_deterministically(self):
+        selected = []
+        for first_summary, second_summary in (("甲摘要", "乙摘要"), ("乙摘要", "甲摘要")):
+            with tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary) / "repository"
+                paths = _build_fixture(root)
+                first_manifest = paths["latest_news"]
+                first_descriptor = json.loads(
+                    first_manifest.read_text(encoding="utf-8")
+                )["table"]
+                first_path = first_manifest.parent / first_descriptor["file"]
+                first = json.loads(first_path.read_text(encoding="utf-8").splitlines()[0])
+                first["summary"] = first_summary
+                _rewrite_single_table_records(first_manifest, [first])
+                _refresh_report_source_hashes(root, first_manifest)
+
+                duplicate = dict(first)
+                duplicate["summary"] = second_summary
+                second_manifest = root / (
+                    "data/normalized/runs/iwencai/2026/01/04/"
+                    "news-latest-b/manifest.json"
+                )
+                _rewrite_single_table_records(second_manifest, [duplicate])
+                _refresh_report_source_hashes(root, second_manifest)
+
+                output = _public_output(root)
+                export_public_site(root, output)
+                content = json.loads((output / "content/index.json").read_text(encoding="utf-8"))
+                self.assertEqual(len(content["news"]), 1)
+                self.assertEqual(content["news"][0]["newsId"], "news-a")
+                selected.append(content["news"][0]["summary"])
+        self.assertEqual(selected, ["乙摘要", "乙摘要"])
+
+    def test_news_duplicate_non_summary_conflict_remains_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "repository"
+            paths = _build_fixture(root)
+            first_manifest = paths["latest_news"]
+            first_descriptor = json.loads(first_manifest.read_text(encoding="utf-8"))["table"]
+            first_path = first_manifest.parent / first_descriptor["file"]
+            first = json.loads(first_path.read_text(encoding="utf-8").splitlines()[0])
+
+            duplicate = dict(first)
+            duplicate["publisher"] = "不同媒体"
+            second_manifest = root / (
+                "data/normalized/runs/iwencai/2026/01/04/"
+                "news-latest-b/manifest.json"
+            )
+            _rewrite_single_table_records(second_manifest, [duplicate])
+            _refresh_report_source_hashes(root, second_manifest)
+
+            with self.assertRaisesRegex(
+                ExportError, "conflicting duplicate identifiers.*publisher"
+            ):
+                export_public_site(root, _public_output(root))
+
+    def test_event_duplicate_summary_variants_remain_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "repository"
+            _build_fixture(root)
+            first_manifest = root / (
+                "data/normalized/runs/iwencai/2026/01/04/"
+                "events-latest/manifest.json"
+            )
+            first = {
+                "event_id": "event-a",
+                "published_at": "2026-01-04T09:00:00+08:00",
+                "title": "公司公告",
+                "summary": "甲摘要",
+                "url": "https://example.com/event-a",
+            }
+            _rewrite_single_table_records(first_manifest, [first])
+            _refresh_report_source_hashes(root, first_manifest)
+
+            second_manifest = root / (
+                "data/normalized/runs/iwencai/2026/01/04/"
+                "events-latest-b/manifest.json"
+            )
+            manifest = json.loads(first_manifest.read_text(encoding="utf-8"))
+            _write_json(second_manifest, manifest)
+            duplicate = dict(first)
+            duplicate["summary"] = "乙摘要"
+            _rewrite_single_table_records(second_manifest, [duplicate])
+            with self.assertRaisesRegex(ExportError, "conflicting duplicate identifiers"):
+                export_public_site(root, _public_output(root))
+
     def test_sensitive_allowed_field_value_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "repository"
